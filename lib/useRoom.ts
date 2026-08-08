@@ -232,19 +232,29 @@ export async function startGame(room: Room, players: Player[]) {
           suspect.id,
         ];
 
-  // Pick one random question from the bank without downloading the
-  // whole table: get the row count, then fetch a single random offset.
+  // Pick one random question from the selected intensity only.
+  // FRIENDLY / CHAOTIC / SAVAGE now actually affect the question bank.
   const { count, error: countError } = await supabase
     .from("questions")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .eq("intensity", room.intensity);
 
-  if (countError) throw new Error(countError.message);
-  if (!count) throw new Error("No questions are set up yet. Run the questions migration first.");
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  if (!count) {
+    throw new Error(
+      `No ${room.intensity} questions are set up yet.`
+    );
+  }
 
   const offset = Math.floor(Math.random() * count);
+
   const { data: questionRows, error: questionError } = await supabase
     .from("questions")
     .select("*")
+    .eq("intensity", room.intensity)
     .range(offset, offset);
 
   if (questionError || !questionRows || questionRows.length === 0) {

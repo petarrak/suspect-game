@@ -13,6 +13,7 @@ type TranslationKey =
   | "tagline"
   | "createGame"
   | "joinGame"
+  | "howToPlay"
   | "homeFooter"
   | "back"
   | "createTitle"
@@ -65,7 +66,34 @@ type TranslationKey =
   | "friendly"
   | "chaotic"
   | "savage"
-  | "kick";
+  | "kick"
+  | "rulesTitle"
+  | "rulesSubtitle"
+  | "rulesGoalTitle"
+  | "rulesGoalText"
+  | "rulesRoundTitle"
+  | "rulesStep1Title"
+  | "rulesStep1Text"
+  | "rulesStep2Title"
+  | "rulesStep2Text"
+  | "rulesStep3Title"
+  | "rulesStep3Text"
+  | "rulesStep4Title"
+  | "rulesStep4Text"
+  | "rulesScoringTitle"
+  | "rulesScoringGroup"
+  | "rulesScoringSuspect"
+  | "rulesTipsTitle"
+  | "rulesTip1"
+  | "rulesTip2"
+  | "rulesTip3"
+  | "rulesTip4"
+  | "rulesBestWithTitle"
+  | "rulesPlayers"
+  | "rulesPhones"
+  | "rulesPerfectFor"
+  | "rulesImportantTitle"
+  | "rulesImportantText";
 
 const translations: Record<
   Language,
@@ -75,6 +103,7 @@ const translations: Record<
     tagline: "Everyone has a secret.",
     createGame: "CREATE GAME",
     joinGame: "JOIN GAME",
+    howToPlay: "HOW TO PLAY",
     homeFooter:
       "Party games for people who trust their friends too much.",
 
@@ -146,12 +175,65 @@ const translations: Record<
     savage: "SAVAGE",
 
     kick: "KICK",
+
+    rulesTitle: "HOW TO PLAY",
+    rulesSubtitle:
+      "Learn the rules in under a minute.",
+
+    rulesGoalTitle: "GOAL",
+    rulesGoalText:
+      "One player is secretly the Suspect. Everyone else gets the same question, while the Suspect gets a slightly different one. Answer naturally, listen carefully and figure out who received the different question.",
+
+    rulesRoundTitle: "HOW A ROUND WORKS",
+
+    rulesStep1Title: "Read your question",
+    rulesStep1Text:
+      "Every player receives a private question. Never show your screen to anyone.",
+
+    rulesStep2Title: "Answer out loud",
+    rulesStep2Text:
+      "Everyone answers their question out loud. Listen carefully because one player's answer might not quite fit.",
+
+    rulesStep3Title: "Vote",
+    rulesStep3Text:
+      "After everyone has answered, secretly vote for the player you think is the Suspect.",
+
+    rulesStep4Title: "Reveal",
+    rulesStep4Text:
+      "The game reveals the Suspect, both questions and how everyone voted.",
+
+    rulesScoringTitle: "SCORING",
+    rulesScoringGroup:
+      "Players who correctly identify the Suspect can earn points.",
+    rulesScoringSuspect:
+      "The Suspect can earn points by avoiding detection.",
+
+    rulesTipsTitle: "TIPS",
+    rulesTip1:
+      "Don't give an answer that is too vague.",
+    rulesTip2:
+      "Don't be so specific that you reveal your question.",
+    rulesTip3:
+      "Listen for answers that feel slightly out of place.",
+    rulesTip4:
+      "If you're the Suspect, stay calm and bluff confidently.",
+
+    rulesBestWithTitle: "BEST WITH",
+    rulesPlayers: "3–12 players",
+    rulesPhones: "One phone per player",
+    rulesPerfectFor:
+      "Friends, parties and game nights",
+
+    rulesImportantTitle: "IMPORTANT",
+    rulesImportantText:
+      "Keep your phone hidden. Seeing another player's question can ruin the round.",
   },
 
   hr: {
     tagline: "Svatko ima tajnu.",
     createGame: "KREIRAJ IGRU",
     joinGame: "PRIDRUŽI SE",
+    howToPlay: "KAKO IGRATI",
     homeFooter:
       "Party igra za ljude koji možda malo previše vjeruju svojim prijateljima.",
 
@@ -225,25 +307,85 @@ const translations: Record<
     savage: "BRUTALNO",
 
     kick: "IZBACI",
+
+    rulesTitle: "KAKO IGRATI",
+    rulesSubtitle:
+      "Nauči pravila za manje od minute.",
+
+    rulesGoalTitle: "CILJ",
+    rulesGoalText:
+      "Jedan igrač je potajno Sumnjivac. Svi ostali dobiju isto pitanje, dok Sumnjivac dobije malo drugačije pitanje. Odgovaraj prirodno, pažljivo slušaj ostale i pokušaj otkriti tko je dobio drugačije pitanje.",
+
+    rulesRoundTitle: "KAKO IZGLEDA RUNDA",
+
+    rulesStep1Title: "Pročitaj svoje pitanje",
+    rulesStep1Text:
+      "Svaki igrač dobiva privatno pitanje. Nikome nemoj pokazivati svoj ekran.",
+
+    rulesStep2Title: "Odgovori naglas",
+    rulesStep2Text:
+      "Svi igrači naglas odgovaraju na svoje pitanje. Pažljivo slušaj jer odgovor jednog igrača možda neće potpuno odgovarati ostalima.",
+
+    rulesStep3Title: "Glasaj",
+    rulesStep3Text:
+      "Nakon što svi odgovore, potajno glasaj za igrača za kojeg misliš da je Sumnjivac.",
+
+    rulesStep4Title: "Otkrivanje",
+    rulesStep4Text:
+      "Igra otkriva tko je bio Sumnjivac, oba pitanja i kako je svaki igrač glasao.",
+
+    rulesScoringTitle: "BODOVANJE",
+    rulesScoringGroup:
+      "Igrači koji točno otkriju Sumnjivca mogu osvojiti bodove.",
+    rulesScoringSuspect:
+      "Sumnjivac može osvojiti bodove ako uspije izbjeći otkrivanje.",
+
+    rulesTipsTitle: "SAVJETI",
+    rulesTip1:
+      "Nemoj dati odgovor koji je previše neodređen.",
+    rulesTip2:
+      "Nemoj biti toliko precizan da otkriješ svoje pitanje.",
+    rulesTip3:
+      "Slušaj odgovore koji zvuče kao da se malo ne uklapaju.",
+    rulesTip4:
+      "Ako si Sumnjivac, ostani miran i uvjerljivo blefiraj.",
+
+    rulesBestWithTitle: "NAJBOLJE ZA",
+    rulesPlayers: "3–12 igrača",
+    rulesPhones: "Jedan mobitel po igraču",
+    rulesPerfectFor:
+      "Prijatelje, zabave i večeri društvenih igara",
+
+    rulesImportantTitle: "VAŽNO",
+    rulesImportantText:
+      "Drži svoj mobitel skrivenim. Ako vidiš pitanje drugog igrača, možeš pokvariti cijelu rundu.",
   },
 };
 
 type LanguageContextType = {
   language: Language;
-  setLanguage: (language: Language) => void;
-  t: (key: TranslationKey) => string;
+  setLanguage: (
+    language: Language
+  ) => void;
+  t: (
+    key: TranslationKey
+  ) => string;
 };
 
 const LanguageContext =
-  createContext<LanguageContextType | null>(null);
+  createContext<LanguageContextType | null>(
+    null
+  );
 
 export function LanguageProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [language, setLanguageState] =
-    useState<Language>("en");
+  const [
+    language,
+    setLanguageState,
+  ] = useState<Language>("en");
 
   useEffect(() => {
     const saved =
@@ -256,6 +398,7 @@ export function LanguageProvider({
       saved === "hr"
     ) {
       setLanguageState(saved);
+
       document.documentElement.lang =
         saved;
     }
@@ -264,7 +407,9 @@ export function LanguageProvider({
   function setLanguage(
     newLanguage: Language
   ) {
-    setLanguageState(newLanguage);
+    setLanguageState(
+      newLanguage
+    );
 
     localStorage.setItem(
       "suspect-language",
@@ -275,7 +420,9 @@ export function LanguageProvider({
       newLanguage;
   }
 
-  function t(key: TranslationKey) {
+  function t(
+    key: TranslationKey
+  ) {
     return translations[language][key];
   }
 
@@ -287,8 +434,8 @@ export function LanguageProvider({
         t,
       }}
     >
-      <div className="fixed top-4 right-4 z-[9999]">
-        <div className="flex rounded-xl border border-white/10 bg-[#171724]/90 p-1 shadow-xl backdrop-blur">
+      <div className="fixed top-3 right-3 z-50">
+        <div className="flex rounded-xl border border-white/10 bg-black/40 p-1 backdrop-blur-xl">
           <button
             type="button"
             onClick={() =>

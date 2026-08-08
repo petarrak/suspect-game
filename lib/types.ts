@@ -24,6 +24,7 @@ export interface Room {
   intensity: Intensity;
 
   used_question_ids: number[];
+  used_suspect_player_ids: string[];
 
   suspect_player_id: string | null;
   current_round_id: string | null;
@@ -52,7 +53,6 @@ export interface Player {
 
 export interface Question {
   id: number;
-
   category: string;
 
   normal_question: string;
@@ -64,9 +64,7 @@ export interface Question {
 
 export interface RoundRow {
   id: string;
-
   room_id: string;
-
   round_number: number;
   question_id: number;
 
@@ -81,27 +79,21 @@ export interface RoundRow {
 
 export interface RoundQuestion {
   id: string;
-
   round_id: string;
   player_id: string;
-
   question_text: string;
-
   is_suspect: boolean;
 }
 
 export interface Vote {
   id: string;
-
   round_id: string;
-
   voter_player_id: string;
   voted_for_player_id: string;
 }
 
 export interface QuestionPair {
   id: number;
-
   normalQuestion: string;
   suspectQuestion: string;
 

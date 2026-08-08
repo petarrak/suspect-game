@@ -181,7 +181,56 @@ export async function startGame(room: Room, players: Player[]) {
     throw new Error("Need at least 3 players to start.");
   }
 
-  const suspect = players[Math.floor(Math.random() * players.length)];
+  const previousUsedSuspects =
+    room.current_round === 0
+      ? []
+      : room.used_suspect_player_ids ?? [];
+
+  const activePlayerIds = new Set(
+    players.map((player) => player.id)
+  );
+
+  const cleanedUsedSuspects =
+    previousUsedSuspects.filter((playerId) =>
+      activePlayerIds.has(playerId)
+    );
+
+  let eligibleSuspects = players.filter(
+    (player) =>
+      !cleanedUsedSuspects.includes(player.id)
+  );
+
+  // If everyone has already been the Suspect once,
+  // start a fresh cycle and avoid immediately repeating
+  // the Suspect from the previous round when possible.
+  if (eligibleSuspects.length === 0) {
+    eligibleSuspects = players.filter(
+      (player) =>
+        player.id !== room.suspect_player_id
+    );
+
+    if (eligibleSuspects.length === 0) {
+      eligibleSuspects = players;
+    }
+  }
+
+  const suspect =
+    eligibleSuspects[
+      Math.floor(
+        Math.random() * eligibleSuspects.length
+      )
+    ];
+
+  const startedFreshCycle =
+    cleanedUsedSuspects.length >= players.length;
+
+  const nextUsedSuspects =
+    startedFreshCycle
+      ? [suspect.id]
+      : [
+          ...cleanedUsedSuspects,
+          suspect.id,
+        ];
 
   // Pick one random question from the bank without downloading the
   // whole table: get the row count, then fetch a single random offset.
@@ -255,6 +304,8 @@ export async function startGame(room: Room, players: Player[]) {
       suspect_player_id: suspect.id,
       current_round: nextRoundNumber,
       current_round_id: round.id,
+      used_suspect_player_ids:
+        nextUsedSuspects,
     })
     .eq("id", room.id);
 
@@ -517,31 +568,7 @@ export function useRoomByIdRealtime(roomId: string) {
         .channel(`players-by-id-${roomData.id}`)
         .on(
           "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "players",
-            filter: `room_id=eq.${roomData.id}`,
-          },
-          () => refetchPlayers(roomData.id)
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "players",
-            filter: `room_id=eq.${roomData.id}`,
-          },
-          () => refetchPlayers(roomData.id)
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "players",
-          },
+          { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomData.id}` },
           () => refetchPlayers(roomData.id)
         )
         .subscribe();
@@ -618,31 +645,7 @@ export function useRoomRealtime(code: string) {
         .channel(`players-${roomData.id}`)
         .on(
           "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "players",
-            filter: `room_id=eq.${roomData.id}`,
-          },
-          () => refetchPlayers(roomData.id)
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "players",
-            filter: `room_id=eq.${roomData.id}`,
-          },
-          () => refetchPlayers(roomData.id)
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "players",
-          },
+          { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomData.id}` },
           () => refetchPlayers(roomData.id)
         )
         .subscribe();

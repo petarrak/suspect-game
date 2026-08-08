@@ -13,7 +13,7 @@ import {
   getMyRoundQuestion,
 } from "@/lib/useRoom";
 
-const COUNTDOWN_SECONDS = 10;
+const COUNTDOWN_SECONDS = 20;
 
 export default function QuestionPage() {
   const params = useParams();

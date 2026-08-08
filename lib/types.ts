@@ -7,60 +7,104 @@ export type RoomStatus =
   | "leaderboard"
   | "ended";
 
-export type Intensity = "FRIENDLY" | "CHAOTIC" | "SAVAGE";
+export type Intensity =
+  | "FRIENDLY"
+  | "CHAOTIC"
+  | "SAVAGE";
+
+export interface Room {
+  id: string;
+  code: string;
+  status: RoomStatus;
+  host_user_id: string;
+
+  current_round: number;
+  total_rounds: number;
+
+  intensity: Intensity;
+
+  used_question_ids: number[];
+
+  suspect_player_id: string | null;
+  current_round_id: string | null;
+
+  created_at: string;
+}
 
 export interface Player {
   id: string;
   room_id: string;
   user_id: string;
+
   nickname: string;
   avatar: string;
+
   is_host: boolean;
+
   score: number;
+
   is_ready: boolean;
   has_answered: boolean;
   is_connected: boolean;
+
   joined_at: string;
 }
 
-
-// Matches the `questions` table: the shared question bank.
-// Not secret content — what's secret is which player gets which one.
 export interface Question {
   id: number;
+
   category: string;
+
   normal_question: string;
   suspect_question: string;
+
+  normal_question_hr?: string | null;
+  suspect_question_hr?: string | null;
 }
 
 export interface RoundRow {
   id: string;
+
   room_id: string;
+
   round_number: number;
   question_id: number;
-  status: "question" | "answering" | "voting" | "reveal";
+
+  status:
+    | "question"
+    | "answering"
+    | "voting"
+    | "reveal";
+
   created_at: string;
 }
 
 export interface RoundQuestion {
   id: string;
+
   round_id: string;
   player_id: string;
+
   question_text: string;
+
   is_suspect: boolean;
 }
 
 export interface Vote {
   id: string;
+
   round_id: string;
+
   voter_player_id: string;
   voted_for_player_id: string;
 }
 
 export interface QuestionPair {
   id: number;
+
   normalQuestion: string;
   suspectQuestion: string;
+
   category:
     | "FUNNY"
     | "PARTY"
@@ -69,5 +113,9 @@ export interface QuestionPair {
     | "DATING"
     | "CHAOS"
     | "RANDOM";
-  difficulty: "easy" | "medium" | "hard";
+
+  difficulty:
+    | "easy"
+    | "medium"
+    | "hard";
 }

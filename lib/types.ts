@@ -1,0 +1,73 @@
+export type RoomStatus =
+  | "waiting"
+  | "question"
+  | "answering"
+  | "voting"
+  | "reveal"
+  | "leaderboard"
+  | "ended";
+
+export type Intensity = "FRIENDLY" | "CHAOTIC" | "SAVAGE";
+
+export interface Player {
+  id: string;
+  room_id: string;
+  user_id: string;
+  nickname: string;
+  avatar: string;
+  is_host: boolean;
+  score: number;
+  is_ready: boolean;
+  has_answered: boolean;
+  is_connected: boolean;
+  joined_at: string;
+}
+
+
+// Matches the `questions` table: the shared question bank.
+// Not secret content — what's secret is which player gets which one.
+export interface Question {
+  id: number;
+  category: string;
+  normal_question: string;
+  suspect_question: string;
+}
+
+export interface RoundRow {
+  id: string;
+  room_id: string;
+  round_number: number;
+  question_id: number;
+  status: "question" | "answering" | "voting" | "reveal";
+  created_at: string;
+}
+
+export interface RoundQuestion {
+  id: string;
+  round_id: string;
+  player_id: string;
+  question_text: string;
+  is_suspect: boolean;
+}
+
+export interface Vote {
+  id: string;
+  round_id: string;
+  voter_player_id: string;
+  voted_for_player_id: string;
+}
+
+export interface QuestionPair {
+  id: number;
+  normalQuestion: string;
+  suspectQuestion: string;
+  category:
+    | "FUNNY"
+    | "PARTY"
+    | "FRIENDS"
+    | "EMBARRASSING"
+    | "DATING"
+    | "CHAOS"
+    | "RANDOM";
+  difficulty: "easy" | "medium" | "hard";
+}

@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  min-height: 100%;
+  background: #0b0b12;
+  background-image:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(124, 77, 255, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 20% 100%,
+      rgba(255, 61, 104, 0.12),
+      transparent 45%
+    );
+
+  background-attachment: fixed;
+  overscroll-behavior: none;
+}
+
+html {
+  height: 100%;
+  background-color: #0b0b12;
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+
+button,
+a {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.app-shell {
+  min-height: 100dvh;
+
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.btn {
+  @apply rounded-2xl font-semibold text-center select-none;
+
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease,
+    filter 120ms ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  @apply btn bg-accent text-white py-4 px-6 shadow-lg shadow-accent/30;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.07);
+}
+
+.btn-secondary {
+  @apply btn bg-panel2 text-white py-4 px-6 border border-white/10;
+}
+
+.btn-secondary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  @apply btn bg-transparent text-white/70 py-3 px-4;
+}
+
+.card {
+  @apply bg-panel rounded-3xl border border-white/5 shadow-xl shadow-black/40;
+}
+
+.input {
+  @apply w-full bg-panel2 border border-white/10 rounded-2xl px-4 py-4 text-lg text-white placeholder-white/30 outline-none focus:border-accent;
+
+  font-size: 16px;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* Mobile */
+
+@media (max-width: 640px) {
+  body {
+    width: 100%;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Prevent accidental text selection while playing */
+
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Slightly nicer focus state for keyboard users */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(124, 77, 255, 0.9);
+  outline-offset: 3px;
+}

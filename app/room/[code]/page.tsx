@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import Button from "@/components/Button";
 import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -529,34 +530,64 @@ export default function RoomPage() {
     players.length >= 3;
 
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
+    <motion.main
+      className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32 }}
+    >
 
-      <div className="text-center pt-4">
+      <motion.div
+        className="text-center pt-4"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
         <h1 className="text-3xl font-black">
           SUSPECT 🕵️
         </h1>
-      </div>
+      </motion.div>
 
-      <RoomCodeDisplay
-        code={room.code}
-      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+      >
+        <RoomCodeDisplay
+          code={room.code}
+        />
+      </motion.div>
 
-      <div className="flex flex-col items-center gap-3">
-        <div className="rounded-2xl bg-white p-4 shadow-lg">
+      <motion.div
+        className="flex flex-col items-center gap-3"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <motion.div
+          className="rounded-2xl bg-white p-4 shadow-lg"
+          whileHover={{ scale: 1.03, rotate: 0.5 }}
+          whileTap={{ scale: 0.98 }}
+        >
           <QRCode
             value={`${window.location.origin}/join?code=${room.code}`}
             size={170}
           />
-        </div>
+        </motion.div>
 
         <p className="text-white/40 text-sm">
           📱 {language === "hr"
             ? "Skeniraj za pridruživanje"
             : "Scan to join"}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="flex flex-col gap-3">
+      <motion.div
+        className="flex flex-col gap-3"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
 
         <span className="text-xs uppercase tracking-widest text-white/40">
           {t("players")} (
@@ -564,11 +595,17 @@ export default function RoomPage() {
         </span>
 
         <div className="flex flex-col gap-3">
-
+          <AnimatePresence initial={false}>
           {players.map(
             (player) => (
-              <div
+              <motion.div
+                layout
                 key={player.id}
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -12, scale: 0.97 }}
+                transition={{ duration: 0.22 }}
+                whileHover={{ y: -2 }}
                 className="flex items-center gap-3 rounded-2xl bg-panel2 border border-white/10 px-4 py-4"
               >
 
@@ -650,16 +687,22 @@ export default function RoomPage() {
                     </button>
                   )}
 
-              </div>
+              </motion.div>
             )
           )}
+          </AnimatePresence>
 
         </div>
 
-      </div>
+      </motion.div>
 
       {me.is_host && (
-        <section className="card p-5 flex flex-col gap-6">
+        <motion.section
+          className="card p-5 flex flex-col gap-6"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
 
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-accent mb-1">
@@ -696,9 +739,11 @@ export default function RoomPage() {
                     rounds;
 
                   return (
-                    <button
+                    <motion.button
                       key={rounds}
                       type="button"
+                      whileHover={{ scale: 1.03, y: -1 }}
+                      whileTap={{ scale: 0.96 }}
                       disabled={
                         settingsLoading
                       }
@@ -714,7 +759,7 @@ export default function RoomPage() {
                       }`}
                     >
                       {rounds}
-                    </button>
+                    </motion.button>
                   );
                 }
               )}
@@ -744,9 +789,11 @@ export default function RoomPage() {
                     seconds;
 
                   return (
-                    <button
+                    <motion.button
                       key={seconds}
                       type="button"
+                      whileHover={{ scale: 1.03, y: -1 }}
+                      whileTap={{ scale: 0.96 }}
                       disabled={
                         settingsLoading
                       }
@@ -762,7 +809,7 @@ export default function RoomPage() {
                       }`}
                     >
                       {seconds}s
-                    </button>
+                    </motion.button>
                   );
                 }
               )}
@@ -803,9 +850,11 @@ export default function RoomPage() {
                     option.value;
 
                   return (
-                    <button
+                    <motion.button
                       key={option.value}
                       type="button"
+                      whileHover={{ scale: 1.03, y: -1 }}
+                      whileTap={{ scale: 0.96 }}
                       disabled={
                         settingsLoading
                       }
@@ -827,7 +876,7 @@ export default function RoomPage() {
                       {language === "hr"
                         ? option.hr
                         : option.en}
-                    </button>
+                    </motion.button>
                   );
                 }
               )}
@@ -855,9 +904,11 @@ export default function RoomPage() {
                     intensity;
 
                   return (
-                    <button
+                    <motion.button
                       key={intensity}
                       type="button"
+                      whileHover={{ scale: 1.03, y: -1 }}
+                      whileTap={{ scale: 0.96 }}
                       disabled={
                         settingsLoading
                       }
@@ -883,7 +934,7 @@ export default function RoomPage() {
                       {intensityLabel(
                         intensity
                       )}
-                    </button>
+                    </motion.button>
                   );
                 }
               )}
@@ -898,7 +949,7 @@ export default function RoomPage() {
             </p>
           )}
 
-        </section>
+        </motion.section>
       )}
 
       {!canStart && (
@@ -915,7 +966,12 @@ export default function RoomPage() {
         </p>
       )}
 
-      <div className="mt-auto">
+      <motion.div
+        className="mt-auto"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
 
         {me.is_host ? (
           <Button
@@ -942,8 +998,8 @@ export default function RoomPage() {
           </p>
         )}
 
-      </div>
+      </motion.div>
 
-    </main>
+    </motion.main>
   );
 }

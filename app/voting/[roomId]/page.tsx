@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import Button from "@/components/Button";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
@@ -356,7 +357,12 @@ export default function VotingPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-4">
+      <motion.div
+        className="text-center pt-4"
+        initial={{ opacity: 0, y: -14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <p className="text-xs tracking-[0.25em] uppercase text-accent mb-2">
           {t("voting")}
         </p>
@@ -368,19 +374,43 @@ export default function VotingPage() {
         <p className="text-white/40 mt-2">
           {t("choosePlayer")}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="flex flex-col gap-3">
-        {players.map(
-          (player) => {
+      <AnimatePresence>
+        <div className="flex flex-col gap-3">
+          {players.map(
+            (player) => {
             const selected =
               selectedId ===
               player.id;
 
             return (
-              <button
+              <motion.button
                 key={player.id}
                 type="button"
+                initial={{
+                  opacity: 0,
+                  y: 20,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                exit={{
+                  opacity: 0,
+                  y: -16,
+                  scale: 0.97,
+                }}
+                whileHover={{
+                  scale: 1.02,
+                  y: -2,
+                }}
+                whileTap={{
+                  scale: 0.97,
+                }}
+                transition={{
+                  duration: 0.2,
+                }}
                 disabled={
                   alreadyVoted ||
                   submitting
@@ -405,7 +435,7 @@ export default function VotingPage() {
                   transition
                   ${
                     selected
-                      ? "border-accent bg-accent/20"
+                      ? "border-accent bg-accent/20 shadow-xl shadow-accent/30 scale-[1.02]"
                       : "border-white/10 bg-panel2"
                   }
                   ${
@@ -433,21 +463,42 @@ export default function VotingPage() {
                 </span>
 
                 {selected && (
-                  <span className="float-right text-accent">
+                  <motion.span
+                    initial={{
+                      scale: 0,
+                      opacity: 0,
+                    }}
+                    animate={{
+                      scale: 1,
+                      opacity: 1,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 320,
+                      damping: 18,
+                    }}
+                    className="float-right text-accent"
+                  >
                     ✓
-                  </span>
+                  </motion.span>
                 )}
-              </button>
+              </motion.button>
             );
           }
         )}
-      </div>
+        </div>
+      </AnimatePresence>
 
-      <p className="text-center text-xs uppercase tracking-widest text-white/40">
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="text-center text-xs uppercase tracking-widest text-white/40"
+      >
         {t("votesSubmitted")}:{" "}
         {votesSubmitted} /{" "}
         {players.length}
-      </p>
+      </motion.p>
 
       {submitError && (
         <p className="text-center text-accent text-sm">
@@ -483,9 +534,14 @@ export default function VotingPage() {
         {alreadyVoted &&
           !allVoted && (
             <>
-              <p className="text-center text-green-400 font-semibold">
+              <motion.p
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", stiffness: 260 }}
+                className="text-center text-green-400 font-semibold"
+              >
                 {language === "hr" ? "✓ GLAS PREDAN" : "✓ VOTE SUBMITTED"}
-              </p>
+              </motion.p>
 
               <p className="text-center text-white/40">
                 {t("waitingPlayers")}

@@ -9,6 +9,8 @@ import {
   LanguageProvider,
 } from "@/components/LanguageProvider";
 
+import PageTransition from "@/components/PageTransition";
+
 export const metadata: Metadata = {
   title: "SUSPECT 🕵️",
   description: "Everyone has a secret.",
@@ -45,7 +47,9 @@ export default function RootLayout({
       <body className="h-full min-h-screen bg-bg text-white antialiased overflow-x-hidden">
         <LanguageProvider>
           <div className="app-shell mx-auto max-w-md min-h-[100dvh] relative">
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </div>
         </LanguageProvider>
       </body>

@@ -820,7 +820,7 @@ export default function RevealPage() {
       </motion.div>
 
       <motion.section
-        className="rounded-3xl border border-accent/40 bg-accent/10 p-7 text-center"
+        className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent/10 p-7 text-center shadow-2xl shadow-accent/20"
         initial={{ opacity: 0, scale: 0.92, y: 18 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 220, damping: 18, delay: 0.2 }}
@@ -1000,10 +1000,18 @@ export default function RevealPage() {
       </motion.section>
 
       <motion.section
-        className="rounded-2xl bg-panel2 border border-white/10 p-6 text-center"
-        initial={{ opacity: 0, scale: 0.88 }}
-        animate={{ opacity: 1, scale: [0.88, 1.05, 1] }}
-        transition={{ duration: 0.55, delay: 1.9, ease: "easeOut" }}
+        className={`rounded-2xl p-6 text-center border shadow-xl ${
+          caught
+            ? "bg-green-400/10 border-green-400/30 shadow-green-400/10"
+            : "bg-accent/10 border-accent/30 shadow-accent/15"
+        }`}
+        initial={{ opacity: 0, scale: 0.82, rotateX: -18 }}
+        animate={{
+          opacity: 1,
+          scale: [0.82, 1.08, 0.98, 1],
+          rotateX: 0,
+        }}
+        transition={{ duration: 0.7, delay: 1.9, ease: "easeOut" }}
       >
         {caught ? (
           <>
@@ -1076,9 +1084,21 @@ export default function RevealPage() {
         <div className="flex flex-col gap-3">
           {leaderboard.map(
             (player, index) => (
-              <div
+              <motion.div
                 key={player.id}
-                className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-4"
+                layout
+                initial={{ opacity: 0, x: -18, scale: 0.97 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{
+                  duration: 0.3,
+                  delay: 2.25 + index * 0.09,
+                }}
+                whileHover={{ scale: 1.015, x: 3 }}
+                className={`flex items-center gap-4 rounded-2xl border px-4 py-4 ${
+                  index === 0
+                    ? "border-yellow-400/25 bg-yellow-400/10"
+                    : "border-white/10 bg-black/20"
+                }`}
               >
                 <div className="w-8 text-center text-xl font-black">
                   {index === 0
@@ -1110,10 +1130,18 @@ export default function RevealPage() {
                   </p>
                 </div>
 
-                <div className="text-xl font-black text-accent">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: [0.4, 1.25, 1] }}
+                  transition={{
+                    duration: 0.45,
+                    delay: 2.45 + index * 0.09,
+                  }}
+                  className="text-xl font-black text-accent"
+                >
                   {player.score}
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             )
           )}
         </div>
@@ -1123,9 +1151,18 @@ export default function RevealPage() {
       {isLastRound && (
         <motion.section
           className="relative overflow-hidden rounded-3xl border border-yellow-400/20 bg-gradient-to-b from-yellow-400/10 to-panel2 p-6 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 2.2 }}
+          initial={{ opacity: 0, scale: 0.82, y: 26 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 2.2,
+            type: "spring",
+            stiffness: 180,
+            damping: 16,
+          }}
         >
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             {FINAL_CONFETTI.map((piece, index) => (
@@ -1160,11 +1197,11 @@ export default function RevealPage() {
             <motion.div
               className="text-6xl mb-3"
               animate={{
-                scale: [1, 1.18, 1],
-                rotate: [0, -5, 5, 0],
+                scale: [1, 1.35, 0.96, 1.12, 1],
+                rotate: [0, -8, 8, -3, 0],
               }}
               transition={{
-                duration: 1,
+                duration: 1.25,
                 delay: 2.55,
               }}
             >

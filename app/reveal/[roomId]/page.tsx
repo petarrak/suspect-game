@@ -10,6 +10,18 @@ import { startGame } from "@/lib/useRoom";
 import { playSound } from "@/lib/sounds";
 import type { Player, Room, Vote } from "@/lib/types";
 
+const FINAL_CONFETTI = [
+  { icon: "🎉", left: "6%", delay: 0 },
+  { icon: "✨", left: "16%", delay: 0.18 },
+  { icon: "🎊", left: "27%", delay: 0.08 },
+  { icon: "⭐", left: "39%", delay: 0.28 },
+  { icon: "🏆", left: "50%", delay: 0.12 },
+  { icon: "✨", left: "61%", delay: 0.34 },
+  { icon: "🎊", left: "72%", delay: 0.2 },
+  { icon: "⭐", left: "83%", delay: 0.05 },
+  { icon: "🎉", left: "93%", delay: 0.25 },
+];
+
 type RoundInfo = {
   id: string;
   question_id: number;
@@ -848,40 +860,79 @@ export default function RevealPage() {
           </span>
         </div>
 
-        {voteRows.map((row) => (
-          <div
-            key={row.vote.id}
-            className="rounded-2xl bg-panel2 border border-white/10 p-4 flex gap-3"
-          >
-            <div className="text-2xl">
-              {row.correct
-                ? "✅"
-                : "❌"}
-            </div>
+        {voteRows.map((row, index) => {
+          const earnedDetectivePoints =
+            row.correct &&
+            row.vote.voter_player_id !==
+              room?.suspect_player_id;
 
-            <div>
-              <p className="font-semibold flex items-center gap-2">
-                <span>
-                  {row.voter?.avatar || "🙂"}
-                </span>
+          return (
+            <motion.div
+              key={row.vote.id}
+              className="relative overflow-hidden rounded-2xl bg-panel2 border border-white/10 p-4 flex gap-3"
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: 1.72 + index * 0.08,
+              }}
+            >
+              <div className="text-2xl">
+                {row.correct ? "✅" : "❌"}
+              </div>
 
-                <span>
-                  {row.voter?.nickname ??
-                    (language === "hr" ? "Nepoznato" : "Unknown")}
-                </span>
-              </p>
+              <div className="flex-1">
+                <p className="font-semibold flex items-center gap-2">
+                  <span>
+                    {row.voter?.avatar || "🙂"}
+                  </span>
 
-              <p className="text-sm text-white/40">
-                {language === "hr" ? "glasao za" : "voted for"}{" "}
-                <span className="text-white/80">
-                  {row.votedFor?.avatar || "🙂"}{" "}
-                  {row.votedFor?.nickname ??
-                    (language === "hr" ? "Nepoznato" : "Unknown")}
-                </span>
-              </p>
-            </div>
-          </div>
-        ))}
+                  <span>
+                    {row.voter?.nickname ??
+                      (language === "hr"
+                        ? "Nepoznato"
+                        : "Unknown")}
+                  </span>
+                </p>
+
+                <p className="text-sm text-white/40">
+                  {language === "hr"
+                    ? "glasao za"
+                    : "voted for"}{" "}
+                  <span className="text-white/80">
+                    {row.votedFor?.avatar || "🙂"}{" "}
+                    {row.votedFor?.nickname ??
+                      (language === "hr"
+                        ? "Nepoznato"
+                        : "Unknown")}
+                  </span>
+                </p>
+              </div>
+
+              {earnedDetectivePoints && (
+                <motion.div
+                  className="self-center rounded-xl border border-green-400/20 bg-green-400/10 px-3 py-2 text-green-300 font-black"
+                  initial={{
+                    opacity: 0,
+                    scale: 0.2,
+                    y: 12,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: [0.2, 1.35, 1],
+                    y: 0,
+                  }}
+                  transition={{
+                    duration: 0.55,
+                    delay: 2.05 + index * 0.08,
+                  }}
+                >
+                  +2
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })}
       </motion.section>
 
       <motion.section
@@ -917,6 +968,22 @@ export default function RevealPage() {
             <h3 className="text-xl font-black">
               {t("suspectEscaped")}
             </h3>
+
+            <motion.div
+              className="inline-flex mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-5 py-2 text-accent font-black text-2xl"
+              initial={{ opacity: 0, scale: 0.2, y: 18 }}
+              animate={{
+                opacity: 1,
+                scale: [0.2, 1.4, 1],
+                y: 0,
+              }}
+              transition={{
+                duration: 0.65,
+                delay: 2.35,
+              }}
+            >
+              +3
+            </motion.div>
           </>
         )}
       </motion.section>
@@ -988,6 +1055,78 @@ export default function RevealPage() {
         </div>
 
       </motion.section>
+
+      {isLastRound && (
+        <motion.section
+          className="relative overflow-hidden rounded-3xl border border-yellow-400/20 bg-gradient-to-b from-yellow-400/10 to-panel2 p-6 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 2.2 }}
+        >
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {FINAL_CONFETTI.map((piece, index) => (
+              <motion.span
+                key={`${piece.icon}-${index}`}
+                className="absolute -top-8 text-2xl"
+                style={{ left: piece.left }}
+                initial={{ y: -20, rotate: 0, opacity: 0 }}
+                animate={{
+                  y: [0, 95, 190, 290],
+                  rotate: [0, 90, 200, 320],
+                  opacity: [0, 1, 1, 0],
+                }}
+                transition={{
+                  duration: 2.4,
+                  delay: 2.3 + piece.delay,
+                  repeat: 1,
+                  repeatDelay: 0.6,
+                }}
+              >
+                {piece.icon}
+              </motion.span>
+            ))}
+          </div>
+
+          <motion.div
+            className="relative z-10"
+            initial={{ y: 18, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 2.35 }}
+          >
+            <motion.div
+              className="text-6xl mb-3"
+              animate={{
+                scale: [1, 1.18, 1],
+                rotate: [0, -5, 5, 0],
+              }}
+              transition={{
+                duration: 1,
+                delay: 2.55,
+              }}
+            >
+              🏆
+            </motion.div>
+
+            <p className="text-xs uppercase tracking-[0.3em] text-yellow-300/70">
+              {language === "hr"
+                ? "POBJEDNIK IGRE"
+                : "GAME WINNER"}
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black">
+              {mvp?.avatar || "🙂"}{" "}
+              {mvp?.nickname ??
+                (language === "hr"
+                  ? "Nitko"
+                  : "Nobody")}
+            </h2>
+
+            <p className="mt-2 text-yellow-300 font-black text-xl">
+              {mvp?.score ?? 0} pts
+            </p>
+          </motion.div>
+        </motion.section>
+      )}
 
       {isLastRound && (
         <motion.section

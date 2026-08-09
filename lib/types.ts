@@ -44,6 +44,13 @@ export interface Player {
 
   score: number;
 
+  // Game statistics
+  times_suspect: number;
+  times_caught: number;
+  times_escaped: number;
+  correct_votes: number;
+  wrong_votes: number;
+
   is_ready: boolean;
   has_answered: boolean;
   is_connected: boolean;
@@ -60,6 +67,8 @@ export interface Question {
 
   normal_question_hr?: string | null;
   suspect_question_hr?: string | null;
+
+  intensity?: Intensity;
 }
 
 export interface RoundRow {
@@ -73,6 +82,10 @@ export interface RoundRow {
     | "answering"
     | "voting"
     | "reveal";
+
+  scored?: boolean;
+  suspect_caught?: boolean | null;
+  correct_vote_count?: number;
 
   created_at: string;
 }

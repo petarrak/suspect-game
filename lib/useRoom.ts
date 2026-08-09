@@ -450,14 +450,25 @@ export async function submitVote(
  * protected by the existing rooms_update_host_only RLS policy.
  */
 export async function revealSuspect(roomId: string): Promise<void> {
-  const { error } = await supabase
-    .from("rooms")
-    .update({ status: "reveal" })
-    .eq("id", roomId);
+  // Scoring is handled atomically in PostgreSQL so the host cannot
+  // accidentally score the same round twice and RLS does not block
+  // updating other players' scores/statistics.
+  const { error } = await supabase.rpc("score_current_round", {
+    p_room_id: roomId,
+  });
 
   if (error) {
-    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
-    throw new Error(detail || "Could not reveal the Suspect.");
+    const detail = [
+      error.message,
+      error.details,
+      error.hint,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    throw new Error(
+      detail || "Could not reveal and score the round."
+    );
   }
 }
 

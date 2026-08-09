@@ -14,6 +14,9 @@ type RoundInfo = {
   id: string;
   question_id: number;
   round_number: number;
+  scored?: boolean;
+  suspect_caught?: boolean | null;
+  correct_vote_count?: number;
 };
 
 type QuestionInfo = {
@@ -24,56 +27,6 @@ type QuestionInfo = {
   suspect_question_hr: string | null;
   category: string;
 };
-
-
-function AnimatedScore({
-  value,
-  delay = 0,
-}: {
-  value: number;
-  delay?: number;
-}) {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    const startTimer = window.setTimeout(() => {
-      const duration = 700;
-      const startedAt = performance.now();
-
-      function animate(now: number) {
-        const progress = Math.min(
-          1,
-          (now - startedAt) / duration
-        );
-
-        const eased =
-          1 - Math.pow(1 - progress, 3);
-
-        setDisplay(
-          Math.round(value * eased)
-        );
-
-        if (progress < 1) {
-          requestAnimationFrame(
-            animate
-          );
-        }
-      }
-
-      requestAnimationFrame(
-        animate
-      );
-    }, delay);
-
-    return () => {
-      window.clearTimeout(
-        startTimer
-      );
-    };
-  }, [value, delay]);
-
-  return <>{display}</>;
-}
 
 export default function RevealPage() {
   const params = useParams();
@@ -204,7 +157,7 @@ export default function RevealPage() {
         } = await supabase
           .from("rounds")
           .select(
-            "id, question_id, round_number"
+            "id, question_id, round_number, scored, suspect_caught, correct_vote_count"
           )
           .eq(
             "id",
@@ -253,27 +206,6 @@ export default function RevealPage() {
           throw new Error(
             votesError.message
           );
-        }
-
-        /*
-         * Only host applies scoring.
-         * The SQL function is idempotent, so refreshing
-         * cannot award points twice.
-         */
-        if (myPlayer?.is_host) {
-          const { error: scoreError } =
-            await supabase.rpc(
-              "apply_round_scoring",
-              {
-                p_room_id: roomData.id,
-              }
-            );
-
-          if (scoreError) {
-            throw new Error(
-              `Scoring: ${scoreError.message}`
-            );
-          }
         }
 
         const {
@@ -461,15 +393,32 @@ export default function RevealPage() {
       );
     }, [votes, players, room]);
 
-  const correctVotes =
+  const detectiveVotes =
     voteRows.filter(
+      (row) =>
+        row.vote.voter_player_id !==
+        room?.suspect_player_id
+    );
+
+  const correctVotes =
+    detectiveVotes.filter(
       (row) => row.correct
     ).length;
 
+  const detectiveCount =
+    players.filter(
+      (player) =>
+        player.id !==
+        room?.suspect_player_id
+    ).length;
+
   const caught =
-    players.length > 0 &&
-    correctVotes >
-      players.length / 2;
+    round?.suspect_caught ??
+    (
+      detectiveCount > 0 &&
+      correctVotes >
+        detectiveCount / 2
+    );
 
   const leaderboard =
     [...players].sort(
@@ -482,18 +431,49 @@ export default function RevealPage() {
     room.current_round >=
       room.total_rounds;
 
-  const confettiPieces = [
-    "🎉",
-    "✨",
-    "⭐",
-    "🎊",
-    "💫",
-    "🏆",
-    "✨",
-    "🎉",
-    "⭐",
-    "🎊",
-  ];
+  const accuracyFor = (player: Player) => {
+    const total =
+      (player.correct_votes ?? 0) +
+      (player.wrong_votes ?? 0);
+
+    if (total === 0) return 0;
+
+    return Math.round(
+      ((player.correct_votes ?? 0) / total) * 100
+    );
+  };
+
+  const mvp = leaderboard[0] ?? null;
+
+  const masterDetective =
+    [...players].sort(
+      (a, b) =>
+        (b.correct_votes ?? 0) -
+        (a.correct_votes ?? 0)
+    )[0] ?? null;
+
+  const bestSuspect =
+    [...players].sort(
+      (a, b) =>
+        (b.times_escaped ?? 0) -
+          (a.times_escaped ?? 0) ||
+        (b.times_suspect ?? 0) -
+          (a.times_suspect ?? 0)
+    )[0] ?? null;
+
+  const mostAccurate =
+    [...players].sort(
+      (a, b) =>
+        accuracyFor(b) -
+        accuracyFor(a)
+    )[0] ?? null;
+
+  const chaosAgent =
+    [...players].sort(
+      (a, b) =>
+        (b.wrong_votes ?? 0) -
+        (a.wrong_votes ?? 0)
+    )[0] ?? null;
 
   useEffect(() => {
     if (
@@ -823,7 +803,7 @@ export default function RevealPage() {
 
           <span className="text-sm text-white/40">
             {correctVotes}/
-            {players.length} {t("correct")}
+            {detectiveCount} {t("correct")}
           </span>
         </div>
 
@@ -900,231 +880,258 @@ export default function RevealPage() {
         )}
       </motion.section>
 
-      {/* LEADERBOARD 2.0 */}
+      {/* LEADERBOARD */}
 
       <motion.section
-        className="relative overflow-hidden rounded-3xl bg-panel2 border border-white/10 p-5"
-        initial={{ opacity: 0, y: 28 }}
+        className="rounded-3xl bg-panel2 border border-white/10 p-5"
+        initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 2.1 }}
+        transition={{ duration: 0.45, delay: 2.1 }}
       >
-        {isLastRound && (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {confettiPieces.map((piece, index) => (
-              <motion.span
-                key={`${piece}-${index}`}
-                className="absolute text-xl"
-                initial={{
-                  opacity: 0,
-                  y: -30,
-                  x: 0,
-                  rotate: 0,
-                }}
-                animate={{
-                  opacity: [0, 1, 1, 0],
-                  y: 380,
-                  x:
-                    index % 2 === 0
-                      ? 42
-                      : -42,
-                  rotate:
-                    index % 2 === 0
-                      ? 240
-                      : -240,
-                }}
-                transition={{
-                  duration: 2.8 + (index % 3) * 0.35,
-                  delay: 2.25 + index * 0.09,
-                  repeat: Infinity,
-                  repeatDelay: 1.2,
-                }}
-                style={{
-                  left: `${8 + index * 9}%`,
-                  top: "-8%",
-                }}
-              >
-                {piece}
-              </motion.span>
-            ))}
-          </div>
-        )}
 
-        <div className="relative z-10 text-center mb-5">
+        <div className="text-center mb-5">
           <p className="text-xs uppercase tracking-[0.25em] text-white/40 mb-1">
             {isLastRound
               ? t("finalResults")
               : t("currentStandings")}
           </p>
 
-          <motion.h2
-            className="text-2xl font-black"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{
-              duration: 0.35,
-              delay: 2.25,
-            }}
-          >
+          <h2 className="text-2xl font-black">
             🏆 {t("leaderboard")}
-          </motion.h2>
+          </h2>
         </div>
 
-        {leaderboard[0] && (
-          <motion.div
-            className="relative z-10 mb-4 rounded-3xl border border-yellow-300/40 bg-yellow-400/10 px-5 py-6 text-center shadow-[0_0_35px_rgba(250,204,21,0.14)]"
-            initial={{
-              opacity: 0,
-              scale: 0.82,
-              y: 18,
-            }}
-            animate={{
-              opacity: 1,
-              scale: [0.82, 1.04, 1],
-              y: 0,
-            }}
-            transition={{
-              duration: 0.55,
-              delay: 2.35,
-              ease: "easeOut",
-            }}
-          >
-            <motion.div
-              className="text-4xl mb-1"
-              animate={{
-                y: [0, -5, 0],
-                rotate: [0, -5, 5, 0],
-              }}
-              transition={{
-                duration: 1.6,
-                repeat: Infinity,
-                repeatDelay: 1.1,
-              }}
-            >
-              👑
-            </motion.div>
-
-            <div className="text-5xl mb-2">
-              {leaderboard[0].avatar || "🙂"}
-            </div>
-
-            <p className="text-xl font-black">
-              {leaderboard[0].nickname}
-              {leaderboard[0].id === meId && (
-                <span className="ml-2 text-sm font-semibold text-white/40">
-                  {language === "hr"
-                    ? "(ti)"
-                    : "(you)"}
-                </span>
-              )}
-            </p>
-
-            <div className="mt-2 text-3xl font-black text-yellow-300">
-              <AnimatedScore
-                value={leaderboard[0].score}
-                delay={2500}
-              />
-              <span className="ml-1 text-sm text-yellow-200/70">
-                pts
-              </span>
-            </div>
-          </motion.div>
-        )}
-
-        <div className="relative z-10 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {leaderboard.map(
-            (player, index) => {
-              if (index === 0) {
-                return null;
-              }
+            (player, index) => (
+              <div
+                key={player.id}
+                className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-4"
+              >
+                <div className="w-8 text-center text-xl font-black">
+                  {index === 0
+                    ? "🥇"
+                    : index === 1
+                    ? "🥈"
+                    : index === 2
+                    ? "🥉"
+                    : `${index + 1}.`}
+                </div>
 
-              const position =
-                index + 1;
+                <div className="flex-1">
+                  <p className="font-bold flex items-center gap-2">
+                    <span>
+                      {player.avatar || "🙂"}
+                    </span>
 
-              const medal =
-                index === 1
-                  ? "🥈"
-                  : index === 2
-                  ? "🥉"
-                  : `${position}.`;
-
-              const glowClass =
-                index === 1
-                  ? "border-slate-300/30 bg-slate-300/5 shadow-[0_0_24px_rgba(203,213,225,0.08)]"
-                  : index === 2
-                  ? "border-orange-400/25 bg-orange-500/5 shadow-[0_0_24px_rgba(251,146,60,0.06)]"
-                  : "border-white/10 bg-black/20";
-
-              return (
-                <motion.div
-                  key={player.id}
-                  layout
-                  className={`flex items-center gap-4 rounded-2xl border px-4 py-4 ${glowClass}`}
-                  initial={{
-                    opacity: 0,
-                    x: 28,
-                    scale: 0.96,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    x: 0,
-                    scale: 1,
-                  }}
-                  transition={{
-                    duration: 0.35,
-                    delay:
-                      2.55 +
-                      index * 0.12,
-                  }}
-                >
-                  <div className="w-9 text-center text-xl font-black">
-                    {medal}
-                  </div>
-
-                  <div className="text-2xl">
-                    {player.avatar || "🙂"}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">
+                    <span>
                       {player.nickname}
 
-                      {player.id === meId && (
-                        <span className="text-white/40">
-                          {" "}
-                          {language === "hr"
-                            ? "(ti)"
-                            : "(you)"}
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                    {player.id ===
+                      meId && (
+                      <span className="text-white/40">
+                        {" "}
+                        {language === "hr" ? "(ti)" : "(you)"}
+                      </span>
+                    )}
+                    </span>
+                  </p>
+                </div>
 
-                  <motion.div
-                    className="text-xl font-black text-accent"
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: [0.8, 1.12, 1] }}
-                    transition={{
-                      duration: 0.35,
-                      delay:
-                        2.8 +
-                        index * 0.12,
-                    }}
-                  >
-                    <AnimatedScore
-                      value={player.score}
-                      delay={
-                        2750 +
-                        index * 120
-                      }
-                    />
-                  </motion.div>
-                </motion.div>
-              );
-            }
+                <div className="text-xl font-black text-accent">
+                  {player.score}
+                </div>
+              </div>
+            )
           )}
         </div>
 
       </motion.section>
+
+      {isLastRound && (
+        <motion.section
+          className="rounded-3xl bg-panel2 border border-white/10 p-5"
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 2.25 }}
+        >
+          <div className="text-center mb-5">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/40 mb-1">
+              {language === "hr"
+                ? "STATISTIKA IGRE"
+                : "GAME STATS"}
+            </p>
+
+            <h2 className="text-2xl font-black">
+              📊 {language === "hr"
+                ? "ZAVRŠNA STATISTIKA"
+                : "FINAL STATS"}
+            </h2>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {leaderboard.map((player) => {
+              const totalVotes =
+                (player.correct_votes ?? 0) +
+                (player.wrong_votes ?? 0);
+
+              const accuracy =
+                totalVotes === 0
+                  ? 0
+                  : Math.round(
+                      ((player.correct_votes ?? 0) /
+                        totalVotes) *
+                        100
+                    );
+
+              return (
+                <div
+                  key={`stats-${player.id}`}
+                  className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="font-bold flex items-center gap-2">
+                      <span className="text-2xl">
+                        {player.avatar || "🙂"}
+                      </span>
+                      <span>{player.nickname}</span>
+                    </div>
+
+                    <span className="text-accent font-black">
+                      {player.score} pts
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl bg-white/[0.03] p-3">
+                      <p className="text-white/40">
+                        {language === "hr"
+                          ? "Bio sumnjivac"
+                          : "Times Suspect"}
+                      </p>
+                      <p className="font-black text-lg">
+                        {player.times_suspect ?? 0}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/[0.03] p-3">
+                      <p className="text-white/40">
+                        {language === "hr"
+                          ? "Pobjegao"
+                          : "Escaped"}
+                      </p>
+                      <p className="font-black text-lg">
+                        {player.times_escaped ?? 0}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/[0.03] p-3">
+                      <p className="text-white/40">
+                        {language === "hr"
+                          ? "Točni glasovi"
+                          : "Correct Votes"}
+                      </p>
+                      <p className="font-black text-lg">
+                        {player.correct_votes ?? 0}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/[0.03] p-3">
+                      <p className="text-white/40">
+                        {language === "hr"
+                          ? "Preciznost"
+                          : "Accuracy"}
+                      </p>
+                      <p className="font-black text-lg">
+                        {accuracy}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3">
+            <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4">
+              <p className="text-xs text-yellow-300 font-black tracking-widest">
+                🏆 MVP
+              </p>
+              <p className="font-bold mt-1">
+                {mvp?.avatar} {mvp?.nickname ?? "-"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-green-400/20 bg-green-400/10 p-4">
+              <p className="text-xs text-green-300 font-black tracking-widest">
+                🎯 {language === "hr"
+                  ? "GLAVNI DETEKTIV"
+                  : "MASTER DETECTIVE"}
+              </p>
+              <p className="font-bold mt-1">
+                {masterDetective?.avatar}{" "}
+                {masterDetective?.nickname ?? "-"}{" "}
+                <span className="text-white/40 font-normal">
+                  ({masterDetective?.correct_votes ?? 0})
+                </span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-accent/20 bg-accent/10 p-4">
+              <p className="text-xs text-accent font-black tracking-widest">
+                😈 {language === "hr"
+                  ? "NAJBOLJI SUMNJIVAC"
+                  : "BEST SUSPECT"}
+              </p>
+              <p className="font-bold mt-1">
+                {bestSuspect?.avatar}{" "}
+                {bestSuspect?.nickname ?? "-"}{" "}
+                <span className="text-white/40 font-normal">
+                  ({bestSuspect?.times_escaped ?? 0}{" "}
+                  {language === "hr"
+                    ? "bijega"
+                    : "escapes"})
+                </span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4">
+              <p className="text-xs text-blue-300 font-black tracking-widest">
+                🎯 {language === "hr"
+                  ? "NAJPRECIZNIJI"
+                  : "MOST ACCURATE"}
+              </p>
+              <p className="font-bold mt-1">
+                {mostAccurate?.avatar}{" "}
+                {mostAccurate?.nickname ?? "-"}{" "}
+                <span className="text-white/40 font-normal">
+                  ({mostAccurate
+                    ? accuracyFor(mostAccurate)
+                    : 0}%)
+                </span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-purple-400/20 bg-purple-400/10 p-4">
+              <p className="text-xs text-purple-300 font-black tracking-widest">
+                🤣 {language === "hr"
+                  ? "AGENT KAOSA"
+                  : "CHAOS AGENT"}
+              </p>
+              <p className="font-bold mt-1">
+                {chaosAgent?.avatar}{" "}
+                {chaosAgent?.nickname ?? "-"}{" "}
+                <span className="text-white/40 font-normal">
+                  ({chaosAgent?.wrong_votes ?? 0}{" "}
+                  {language === "hr"
+                    ? "krivih"
+                    : "wrong"})
+                </span>
+              </p>
+            </div>
+          </div>
+        </motion.section>
+      )}
 
       {nextRoundError && (
         <p className="text-center text-accent text-sm">

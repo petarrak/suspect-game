@@ -12,6 +12,23 @@ export type Intensity =
   | "CHAOTIC"
   | "SAVAGE";
 
+export type QuestionPack =
+  | "CLASSIC"
+  | "PARTY"
+  | "GAMING"
+  | "COUPLES"
+  | "ADULT"
+  | "DRINKING"
+  | "MOVIES"
+  | "MUSIC"
+  | "SPORTS"
+  | "GEOGRAPHY"
+  | "MEMES"
+  | "INTERNET"
+  | "KIDS"
+  | "FAMILY"
+  | "RANDOM";
+
 export interface Room {
   id: string;
   code: string;
@@ -23,6 +40,7 @@ export interface Room {
 
   question_time: number;
 
+  question_pack: QuestionPack;
   intensity: Intensity;
 
   used_question_ids: number[];
@@ -63,6 +81,7 @@ export interface Player {
 export interface Question {
   id: number;
   category: string;
+  question_pack: Exclude<QuestionPack, "RANDOM">;
 
   normal_question: string;
   suspect_question: string;

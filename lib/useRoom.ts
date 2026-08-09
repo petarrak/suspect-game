@@ -232,30 +232,60 @@ export async function startGame(room: Room, players: Player[]) {
           suspect.id,
         ];
 
-  // Pick one random question from the selected intensity only.
-  // FRIENDLY / CHAOTIC / SAVAGE now actually affect the question bank.
-  const { count, error: countError } = await supabase
+  // Pick one random question using both intensity and the host's pack.
+  // RANDOM intentionally skips the pack filter and mixes all packs.
+  let countQuery = supabase
     .from("questions")
     .select("*", { count: "exact", head: true })
     .eq("intensity", room.intensity);
+
+  if (room.question_pack !== "RANDOM") {
+    countQuery = countQuery.eq(
+      "question_pack",
+      room.question_pack
+    );
+  }
+
+  const { count, error: countError } =
+    await countQuery;
 
   if (countError) {
     throw new Error(countError.message);
   }
 
   if (!count) {
+    const packLabel =
+      room.question_pack === "RANDOM"
+        ? "RANDOM"
+        : room.question_pack;
+
     throw new Error(
-      `No ${room.intensity} questions are set up yet.`
+      `No ${room.intensity} questions exist in the ${packLabel} pack yet.`
     );
   }
 
-  const offset = Math.floor(Math.random() * count);
+  const offset =
+    Math.floor(Math.random() * count);
 
-  const { data: questionRows, error: questionError } = await supabase
+  let questionQuery = supabase
     .from("questions")
     .select("*")
-    .eq("intensity", room.intensity)
-    .range(offset, offset);
+    .eq("intensity", room.intensity);
+
+  if (room.question_pack !== "RANDOM") {
+    questionQuery = questionQuery.eq(
+      "question_pack",
+      room.question_pack
+    );
+  }
+
+  const {
+    data: questionRows,
+    error: questionError,
+  } = await questionQuery.range(
+    offset,
+    offset
+  );
 
   if (questionError || !questionRows || questionRows.length === 0) {
     throw new Error(questionError?.message ?? "Could not pick a question.");

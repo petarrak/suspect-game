@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { playSound } from "@/lib/sounds";
 import QRCode from "react-qr-code";
-import type { Intensity } from "@/lib/types";
+import type { Intensity, QuestionPack } from "@/lib/types";
 import {
   useRoomRealtime,
   joinRoom,
@@ -18,6 +18,29 @@ import {
 
 const ROUND_OPTIONS = [3, 5, 7, 10];
 const QUESTION_TIME_OPTIONS = [10, 20, 30, 45, 60];
+
+const QUESTION_PACK_OPTIONS: {
+  value: QuestionPack;
+  emoji: string;
+  hr: string;
+  en: string;
+}[] = [
+  { value: "CLASSIC", emoji: "😊", hr: "Classic", en: "Classic" },
+  { value: "PARTY", emoji: "🎉", hr: "Party", en: "Party" },
+  { value: "GAMING", emoji: "🎮", hr: "Gaming", en: "Gaming" },
+  { value: "COUPLES", emoji: "❤️", hr: "Parovi", en: "Couples" },
+  { value: "ADULT", emoji: "🔞", hr: "18+", en: "18+" },
+  { value: "DRINKING", emoji: "🍻", hr: "Drinking", en: "Drinking" },
+  { value: "MOVIES", emoji: "🎬", hr: "Filmovi", en: "Movies" },
+  { value: "MUSIC", emoji: "🎵", hr: "Glazba", en: "Music" },
+  { value: "SPORTS", emoji: "⚽", hr: "Sport", en: "Sports" },
+  { value: "GEOGRAPHY", emoji: "🌍", hr: "Geografija", en: "Geography" },
+  { value: "MEMES", emoji: "😂", hr: "Memeovi", en: "Memes" },
+  { value: "INTERNET", emoji: "📱", hr: "Internet", en: "Internet" },
+  { value: "KIDS", emoji: "🧸", hr: "Djeca", en: "Kids" },
+  { value: "FAMILY", emoji: "👨‍👩‍👧", hr: "Obitelj", en: "Family" },
+  { value: "RANDOM", emoji: "🎲", hr: "Nasumično", en: "Random" },
+];
 
 const INTENSITY_OPTIONS: Intensity[] = [
   "FRIENDLY",
@@ -236,6 +259,47 @@ export default function RoomPage() {
           (language === "hr"
             ? "Nije moguće promijeniti vrijeme za pitanje."
             : "Could not change question time.")
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  }
+
+  async function changeQuestionPack(
+    questionPack: QuestionPack
+  ) {
+    if (
+      !room ||
+      !me?.is_host ||
+      settingsLoading
+    ) {
+      return;
+    }
+
+    playSound("click");
+    setSettingsLoading(true);
+    setSettingsError(null);
+
+    try {
+      const { error } =
+        await supabase
+          .from("rooms")
+          .update({
+            question_pack: questionPack,
+          })
+          .eq("id", room.id);
+
+      if (error) {
+        throw new Error(
+          error.message
+        );
+      }
+    } catch (e: any) {
+      setSettingsError(
+        e?.message ??
+          (language === "hr"
+            ? "Nije moguće promijeniti paket pitanja."
+            : "Could not change the question pack.")
       );
     } finally {
       setSettingsLoading(false);
@@ -703,6 +767,77 @@ export default function RoomPage() {
                 }
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold">
+                {language === "hr"
+                  ? "PAKET PITANJA"
+                  : "QUESTION PACK"}
+              </span>
+
+              <span className="text-xs text-accent font-black">
+                {QUESTION_PACK_OPTIONS.find(
+                  (option) =>
+                    option.value ===
+                    (room.question_pack ?? "CLASSIC")
+                )?.emoji}{" "}
+                {QUESTION_PACK_OPTIONS.find(
+                  (option) =>
+                    option.value ===
+                    (room.question_pack ?? "CLASSIC")
+                )?.[
+                  language === "hr"
+                    ? "hr"
+                    : "en"
+                ]}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {QUESTION_PACK_OPTIONS.map(
+                (option) => {
+                  const active =
+                    (room.question_pack ?? "CLASSIC") ===
+                    option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={
+                        settingsLoading
+                      }
+                      onClick={() =>
+                        changeQuestionPack(
+                          option.value
+                        )
+                      }
+                      className={`rounded-xl border px-2 py-3 text-xs font-black transition ${
+                        active
+                          ? "border-accent bg-accent/20 text-white"
+                          : "border-white/10 bg-black/20 text-white/50"
+                      }`}
+                    >
+                      <span className="block text-lg mb-1">
+                        {option.emoji}
+                      </span>
+
+                      {language === "hr"
+                        ? option.hr
+                        : option.en}
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            <p className="text-[11px] leading-relaxed text-white/30">
+              {language === "hr"
+                ? "Nasumično miješa sve pakete. Novi paketi trebaju imati pitanja u bazi prije igranja."
+                : "Random mixes every pack. New packs need questions in the database before playing."}
+            </p>
           </div>
 
           <div className="flex flex-col gap-3">

@@ -7,8 +7,8 @@ const supabasePublishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string;
 
 if (!supabaseUrl || !supabasePublishableKey) {
-  console.error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. Check your environment variables."
+  throw new Error(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY."
   );
 }
 
@@ -23,14 +23,18 @@ export const supabase = createClient(
   }
 );
 
-/**
- * Every browser tab gets its own anonymous Supabase auth user.
- * This is what lets RLS policies scope a player's private question
- * to only that player, without requiring email/password accounts.
- */
 export async function ensureAnonSession(): Promise<string> {
-  const { data: sessionData } =
-    await supabase.auth.getSession();
+  const {
+    data: sessionData,
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    console.error(
+      "Supabase getSession error:",
+      sessionError
+    );
+  }
 
   if (sessionData.session?.user?.id) {
     return sessionData.session.user.id;
@@ -39,9 +43,20 @@ export async function ensureAnonSession(): Promise<string> {
   const { data, error } =
     await supabase.auth.signInAnonymously();
 
-  if (error || !data.user) {
+  if (error) {
+    console.error(
+      "Supabase anonymous sign-in error:",
+      error
+    );
+
     throw new Error(
-      "Could not start a session. Make sure Anonymous Sign-Ins are enabled in your Supabase project (Authentication -> Providers -> Anonymous)."
+      `Anonymous sign-in failed: ${error.message}`
+    );
+  }
+
+  if (!data.user) {
+    throw new Error(
+      "Anonymous sign-in failed: Supabase returned no user."
     );
   }
 

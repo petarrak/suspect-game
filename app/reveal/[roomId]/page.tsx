@@ -71,6 +71,8 @@ export default function RevealPage() {
 
   const revealSoundPlayed = useRef(false);
   const winnerSoundPlayed = useRef(false);
+  const outcomeSoundPlayed = useRef(false);
+  const scoreSoundPlayed = useRef(false);
 
   async function refetchPlayers(targetRoomId: string) {
     const { data, error } = await supabase
@@ -563,6 +565,64 @@ export default function RevealPage() {
     };
   }, [loading, loadError, room, isLastRound]);
 
+
+  useEffect(() => {
+    if (
+      loading ||
+      loadError ||
+      !room ||
+      !round ||
+      outcomeSoundPlayed.current
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      outcomeSoundPlayed.current = true;
+      playSound(caught ? "caught" : "escaped");
+    }, 2050);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loading, loadError, room, round, caught]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      loadError ||
+      !room ||
+      !round ||
+      scoreSoundPlayed.current
+    ) {
+      return;
+    }
+
+    const hasPointsAwarded =
+      detectiveVotes.some((row) => row.correct) ||
+      !caught;
+
+    if (!hasPointsAwarded) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      scoreSoundPlayed.current = true;
+      playSound("score");
+    }, 2350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    loading,
+    loadError,
+    room,
+    round,
+    detectiveVotes,
+    caught,
+  ]);
+
   async function handleNextRound() {
     if (
       !room ||
@@ -576,6 +636,8 @@ export default function RevealPage() {
     setNextRoundError(null);
 
     try {
+      playSound("new-round");
+
       const {
         data: freshPlayers,
         error: playersError,
@@ -630,6 +692,8 @@ export default function RevealPage() {
     setNextRoundError(null);
 
     try {
+      playSound("new-round");
+
       const { error: resetError } =
         await supabase.rpc(
           "reset_game_for_rematch",

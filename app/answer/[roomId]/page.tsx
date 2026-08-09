@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import PlayerList from "@/components/PlayerList";
 import { useLanguage } from "@/components/LanguageProvider";
+import { playSound } from "@/lib/sounds";
 import {
   useRoomByIdRealtime,
   getMyPlayerInRoom,
@@ -52,7 +53,10 @@ export default function AnswerPage() {
           setMeId(player?.id ?? null);
         }
       } catch (e) {
-        console.error("Could not load player:", e);
+        console.error(
+          "Could not load player:",
+          e
+        );
       } finally {
         if (!cancelled) {
           setMeLoading(false);
@@ -99,6 +103,8 @@ export default function AnswerPage() {
     setVotingError(null);
 
     try {
+      playSound("vote");
+
       await startVoting(room.id);
     } catch (e: any) {
       console.error(
@@ -130,7 +136,7 @@ export default function AnswerPage() {
 
   if (loading || meLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center p-6">
         <p className="text-white/50">
           {language === "hr"
             ? "Učitavanje..."
@@ -165,7 +171,7 @@ export default function AnswerPage() {
   if (!me) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
-        <p className="text-white/60 text-center">
+        <p className="text-accent text-center">
           {language === "hr"
             ? "Nisi dio ove sobe na ovom uređaju."
             : "You're not part of this room on this device."}
@@ -190,7 +196,6 @@ export default function AnswerPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-
       <div className="text-center pt-4">
         <h1 className="text-3xl font-black">
           {t("answerTime")}
@@ -202,7 +207,6 @@ export default function AnswerPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-
         <span className="text-xs uppercase tracking-widest text-white/40">
           {readyCount}/{players.length}{" "}
           {language === "hr"
@@ -223,7 +227,6 @@ export default function AnswerPage() {
               : "🟡 Answering..."
           }
         />
-
       </div>
 
       {readyError && (
@@ -239,7 +242,6 @@ export default function AnswerPage() {
       )}
 
       <div className="mt-auto flex flex-col gap-3">
-
         <Button
           onClick={handleReady}
           disabled={
@@ -273,9 +275,7 @@ export default function AnswerPage() {
               : t("startVoting")}
           </Button>
         )}
-
       </div>
-
     </main>
   );
 }

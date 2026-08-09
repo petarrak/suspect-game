@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 import {
   playSound,
@@ -13,20 +20,22 @@ import {
   getMyRoundQuestion,
 } from "@/lib/useRoom";
 
-const COUNTDOWN_SECONDS = 20;
-
 export default function QuestionPage() {
   const params = useParams();
   const router = useRouter();
   const { language, t } = useLanguage();
 
-  const roomId = params.roomId as string;
+  const roomId =
+    params.roomId as string;
 
   const [questionText, setQuestionText] =
     useState<string | null>(null);
 
   const [roundNumber, setRoundNumber] =
     useState<number | null>(null);
+
+  const [questionTime, setQuestionTime] =
+    useState(20);
 
   const [loading, setLoading] =
     useState(true);
@@ -35,7 +44,7 @@ export default function QuestionPage() {
     useState<string | null>(null);
 
   const [countdown, setCountdown] =
-    useState(COUNTDOWN_SECONDS);
+    useState(20);
 
   const hasNavigated = useRef(false);
 
@@ -67,7 +76,9 @@ export default function QuestionPage() {
         }
 
         const player =
-          await getMyPlayerInRoom(roomId);
+          await getMyPlayerInRoom(
+            roomId
+          );
 
         if (!player) {
           throw new Error(
@@ -101,9 +112,12 @@ export default function QuestionPage() {
           room.current_round
         );
 
-        setCountdown(
-          COUNTDOWN_SECONDS
-        );
+        const seconds =
+          room.question_time ?? 20;
+
+        setQuestionTime(seconds);
+
+        setCountdown(seconds);
 
         hasNavigated.current = false;
 
@@ -128,7 +142,10 @@ export default function QuestionPage() {
       cancelled = true;
       stopSound("tick");
     };
-  }, [roomId, language]);
+  }, [
+    roomId,
+    language,
+  ]);
 
   useEffect(() => {
     if (
@@ -152,7 +169,6 @@ export default function QuestionPage() {
       return;
     }
 
-    // Tick only on 5, 4, 3, 2 and 1.
     if (countdown <= 5) {
       playSound("tick");
 
@@ -191,7 +207,9 @@ export default function QuestionPage() {
       }, 1000);
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
     };
   }, [
     countdown,
@@ -203,8 +221,8 @@ export default function QuestionPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-white/50">
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <p className="text-white/50 text-center">
           {language === "hr"
             ? "Učitavanje tvog pitanja..."
             : "Loading your question..."}
@@ -216,7 +234,6 @@ export default function QuestionPage() {
   if (error) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
-
         <p className="text-accent text-center">
           {error}
         </p>
@@ -230,22 +247,20 @@ export default function QuestionPage() {
         >
           {t("backHome")}
         </button>
-
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-8 p-6">
-
+    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
       <div className="text-center pt-4">
         <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-          {t("round")} {roundNumber}
+          {t("round")}{" "}
+          {roundNumber}
         </p>
       </div>
 
       <div className="card px-6 py-10 flex flex-col items-center gap-4 text-center">
-
         <span className="text-xs uppercase tracking-widest text-white/40">
           {language === "hr"
             ? "Tvoje pitanje"
@@ -255,7 +270,6 @@ export default function QuestionPage() {
         <p className="text-2xl font-semibold leading-snug">
           {questionText}
         </p>
-
       </div>
 
       <p className="text-center text-white/40 text-sm">
@@ -265,7 +279,6 @@ export default function QuestionPage() {
       </p>
 
       <div className="mt-auto flex flex-col items-center gap-2">
-
         <span
           className={`font-bold text-accent transition-all ${
             countdown <= 5
@@ -278,12 +291,16 @@ export default function QuestionPage() {
 
         <span className="text-white/40 text-sm">
           {language === "hr"
+            ? `Host je postavio ${questionTime} sekundi.`
+            : `Host set ${questionTime} seconds.`}
+        </span>
+
+        <span className="text-white/30 text-xs">
+          {language === "hr"
             ? "Automatski nastavljamo..."
             : "Continuing automatically..."}
         </span>
-
       </div>
-
     </main>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import RoomCodeDisplay from "@/components/RoomCodeDisplay";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/useRoom";
 
 const ROUND_OPTIONS = [3, 5, 7, 10];
+const QUESTION_TIME_OPTIONS = [10, 20, 30, 45, 60];
 
 const INTENSITY_OPTIONS: Intensity[] = [
   "FRIENDLY",
@@ -64,6 +65,8 @@ export default function RoomPage() {
   const [kickingId, setKickingId] =
     useState<string | null>(null);
 
+  const previousPlayerCount = useRef(0);
+
   useEffect(() => {
     if (!room) return;
 
@@ -83,6 +86,23 @@ export default function RoomPage() {
       router.push(`/reveal/${room.id}`);
     }
   }, [room, router]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    // First load: remember the current count without playing a sound.
+    if (previousPlayerCount.current === 0) {
+      previousPlayerCount.current = players.length;
+      return;
+    }
+
+    // Play only when the player count increases.
+    if (players.length > previousPlayerCount.current) {
+      playSound("join");
+    }
+
+    previousPlayerCount.current = players.length;
+  }, [players.length, loading]);
 
   async function handleInlineJoin() {
     const trimmed = nickname.trim();
@@ -121,6 +141,8 @@ export default function RoomPage() {
     setStartError(null);
 
     try {
+      playSound("start");
+
       await startGame(
         room,
         players
@@ -173,6 +195,47 @@ export default function RoomPage() {
           (language === "hr"
             ? "Nije moguće promijeniti broj rundi."
             : "Could not change the number of rounds.")
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  }
+
+  async function changeQuestionTime(
+    seconds: number
+  ) {
+    if (
+      !room ||
+      !me?.is_host ||
+      settingsLoading
+    ) {
+      return;
+    }
+
+    playSound("click");
+    setSettingsLoading(true);
+    setSettingsError(null);
+
+    try {
+      const { error } =
+        await supabase
+          .from("rooms")
+          .update({
+            question_time: seconds,
+          })
+          .eq("id", room.id);
+
+      if (error) {
+        throw new Error(
+          error.message
+        );
+      }
+    } catch (e: any) {
+      setSettingsError(
+        e?.message ??
+          (language === "hr"
+            ? "Nije moguće promijeniti vrijeme za pitanje."
+            : "Could not change question time.")
       );
     } finally {
       setSettingsLoading(false);
@@ -594,6 +657,52 @@ export default function RoomPage() {
 
             </div>
 
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold">
+                {language === "hr"
+                  ? "VRIJEME ZA PITANJE"
+                  : "QUESTION TIME"}
+              </span>
+
+              <span className="text-sm text-accent font-black">
+                {room.question_time ?? 20}s
+              </span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2">
+              {QUESTION_TIME_OPTIONS.map(
+                (seconds) => {
+                  const active =
+                    (room.question_time ?? 20) ===
+                    seconds;
+
+                  return (
+                    <button
+                      key={seconds}
+                      type="button"
+                      disabled={
+                        settingsLoading
+                      }
+                      onClick={() =>
+                        changeQuestionTime(
+                          seconds
+                        )
+                      }
+                      className={`rounded-xl border py-3 text-xs font-black transition ${
+                        active
+                          ? "border-accent bg-accent/20 text-white"
+                          : "border-white/10 bg-black/20 text-white/50"
+                      }`}
+                    >
+                      {seconds}s
+                    </button>
+                  );
+                }
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">

@@ -21,6 +21,8 @@ export interface Room {
   current_round: number;
   total_rounds: number;
 
+  question_time: number;
+
   intensity: Intensity;
 
   used_question_ids: number[];

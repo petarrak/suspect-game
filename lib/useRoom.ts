@@ -589,7 +589,31 @@ export function useRoomByIdRealtime(roomId: string) {
         .channel(`players-by-id-${roomData.id}`)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomData.id}` },
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomData.id}`,
+          },
+          () => refetchPlayers(roomData.id)
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomData.id}`,
+          },
+          () => refetchPlayers(roomData.id)
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "players",
+          },
           () => refetchPlayers(roomData.id)
         )
         .subscribe();
@@ -666,7 +690,31 @@ export function useRoomRealtime(code: string) {
         .channel(`players-${roomData.id}`)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomData.id}` },
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomData.id}`,
+          },
+          () => refetchPlayers(roomData.id)
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomData.id}`,
+          },
+          () => refetchPlayers(roomData.id)
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "players",
+          },
           () => refetchPlayers(roomData.id)
         )
         .subscribe();

@@ -208,6 +208,27 @@ export default function RevealPage() {
           );
         }
 
+        /*
+         * Host performs scoring when the reveal page opens.
+         * score_current_round is idempotent, so refreshing cannot
+         * award points twice.
+         */
+        if (myPlayer?.is_host) {
+          const { error: scoreError } =
+            await supabase.rpc(
+              "score_current_round",
+              {
+                p_room_id: roomData.id,
+              }
+            );
+
+          if (scoreError) {
+            throw new Error(
+              `Scoring: ${scoreError.message}`
+            );
+          }
+        }
+
         const {
           data: scoredPlayers,
           error: scoredPlayersError,
@@ -237,8 +258,28 @@ export default function RevealPage() {
             currentPlayers) as Player[]
         );
 
+        const {
+          data: freshRound,
+          error: freshRoundError,
+        } = await supabase
+          .from("rounds")
+          .select(
+            "id, question_id, round_number, scored, suspect_caught, correct_vote_count"
+          )
+          .eq(
+            "id",
+            roomData.current_round_id
+          )
+          .single();
+
+        if (freshRoundError) {
+          throw new Error(
+            freshRoundError.message
+          );
+        }
+
         setRound(
-          roundData as RoundInfo
+          freshRound as RoundInfo
         );
 
         setQuestion(

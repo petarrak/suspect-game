@@ -7,6 +7,7 @@ import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { playSound } from "@/lib/sounds";
+import QRCode from "react-qr-code";
 import type { Intensity } from "@/lib/types";
 import {
   useRoomRealtime,
@@ -412,6 +413,21 @@ export default function RoomPage() {
       <RoomCodeDisplay
         code={room.code}
       />
+
+      <div className="flex flex-col items-center gap-3">
+        <div className="rounded-2xl bg-white p-4 shadow-lg">
+          <QRCode
+            value={`${window.location.origin}/join?code=${room.code}`}
+            size={170}
+          />
+        </div>
+
+        <p className="text-white/40 text-sm">
+          📱 {language === "hr"
+            ? "Skeniraj za pridruživanje"
+            : "Scan to join"}
+        </p>
+      </div>
 
       <div className="flex flex-col gap-3">
 

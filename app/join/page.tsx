@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import { joinRoom } from "@/lib/useRoom";
@@ -11,15 +15,60 @@ export default function JoinGamePage() {
   const { language, t } = useLanguage();
 
   const [code, setCode] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [nickname, setNickname] =
+    useState("");
+  const [loading, setLoading] =
+    useState(false);
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const nicknameRef =
+    useRef<HTMLInputElement>(null);
+
+  /*
+   * QR code opens:
+   * /join?code=ABC123
+   *
+   * Read that code automatically and
+   * put the cursor directly in nickname.
+   */
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const qrCode =
+      params.get("code");
+
+    if (!qrCode) return;
+
+    const cleanedCode =
+      qrCode
+        .trim()
+        .toUpperCase()
+        .slice(0, 6);
+
+    setCode(cleanedCode);
+
+    if (cleanedCode.length === 6) {
+      window.setTimeout(() => {
+        nicknameRef.current?.focus();
+      }, 100);
+    }
+  }, []);
 
   async function handleJoin() {
-    const trimmedCode = code.trim();
-    const trimmedName = nickname.trim();
+    const trimmedCode =
+      code.trim().toUpperCase();
 
-    if (!trimmedCode || trimmedCode.length < 6) {
+    const trimmedName =
+      nickname.trim();
+
+    if (
+      !trimmedCode ||
+      trimmedCode.length < 6
+    ) {
       setError(
         language === "hr"
           ? "Upiši cijeli kod sobe od 6 znakova."
@@ -50,12 +99,15 @@ export default function JoinGamePage() {
     setError(null);
 
     try {
-      const joinedCode = await joinRoom(
-        trimmedCode,
-        trimmedName
-      );
+      const joinedCode =
+        await joinRoom(
+          trimmedCode,
+          trimmedName
+        );
 
-      router.push(`/room/${joinedCode}`);
+      router.push(
+        `/room/${joinedCode}`
+      );
     } catch (e: any) {
       setError(
         e?.message ??
@@ -72,7 +124,9 @@ export default function JoinGamePage() {
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-8 p-6">
       <button
         type="button"
-        onClick={() => router.push("/")}
+        onClick={() =>
+          router.push("/")
+        }
         className="text-white/40 text-sm self-start"
       >
         ← {t("back")}
@@ -86,31 +140,47 @@ export default function JoinGamePage() {
         </h1>
 
         <p className="text-white/50">
-          {language === "hr"
-            ? "Zatraži kod sobe od hosta."
-            : "Ask the host for the room code."}
+          {code.length === 6
+            ? language === "hr"
+              ? "Kod sobe je učitan. Samo upiši nadimak."
+              : "Room code loaded. Just enter your nickname."
+            : language === "hr"
+            ? "Zatraži kod sobe od hosta ili skeniraj QR kod."
+            : "Ask the host for the room code or scan the QR code."}
         </p>
       </div>
 
       <div className="flex flex-col gap-4">
-        <input
-          className="input text-center tracking-[0.3em] uppercase"
-          placeholder={t("roomCode")}
-          value={code}
-          maxLength={6}
-          onChange={(e) =>
-            setCode(e.target.value.toUpperCase())
-          }
-          autoFocus
-        />
+        <div className="relative">
+          <input
+            className="input text-center tracking-[0.3em] uppercase"
+            placeholder={t("roomCode")}
+            value={code}
+            maxLength={6}
+            onChange={(e) =>
+              setCode(
+                e.target.value.toUpperCase()
+              )
+            }
+          />
+
+          {code.length === 6 && (
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 font-bold">
+              ✓
+            </span>
+          )}
+        </div>
 
         <input
+          ref={nicknameRef}
           className="input"
           placeholder={t("nickname")}
           value={nickname}
           maxLength={20}
           onChange={(e) =>
-            setNickname(e.target.value)
+            setNickname(
+              e.target.value
+            )
           }
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -119,6 +189,15 @@ export default function JoinGamePage() {
           }}
         />
       </div>
+
+      {code.length === 6 && (
+        <p className="text-green-400 text-sm text-center">
+          ✓{" "}
+          {language === "hr"
+            ? `Soba ${code} spremna`
+            : `Room ${code} ready`}
+        </p>
+      )}
 
       {error && (
         <p className="text-accent text-sm">

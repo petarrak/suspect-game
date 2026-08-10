@@ -1,10 +1,18 @@
 "use client";
 
-import { ButtonHTMLAttributes } from "react";
+import {
+  ButtonHTMLAttributes,
+  MouseEvent,
+} from "react";
+
 import { playSound } from "@/lib/sounds";
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost";
+interface Props
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?:
+    | "primary"
+    | "secondary"
+    | "ghost";
 }
 
 export default function Button({
@@ -12,6 +20,8 @@ export default function Button({
   className = "",
   children,
   onClick,
+  disabled,
+  type = "button",
   ...rest
 }: Props) {
   const base =
@@ -21,13 +31,38 @@ export default function Button({
       ? "btn-secondary"
       : "btn-ghost";
 
+  function handleClick(
+    event: MouseEvent<HTMLButtonElement>
+  ) {
+    if (disabled) {
+      return;
+    }
+
+    playSound(
+      "click",
+      0.5
+    );
+
+    onClick?.(event);
+  }
+
   return (
     <button
-      className={`${base} disabled:opacity-40 disabled:pointer-events-none w-full ${className}`}
-      onClick={(e) => {
-        playSound("click");
-        onClick?.(e);
-      }}
+      type={type}
+      disabled={disabled}
+      onClick={handleClick}
+      className={`
+        ${base}
+        w-full
+        min-h-[52px]
+        px-5
+        touch-manipulation
+        disabled:pointer-events-none
+        disabled:opacity-40
+        active:scale-[0.97]
+        transition-transform
+        ${className}
+      `}
       {...rest}
     >
       {children}

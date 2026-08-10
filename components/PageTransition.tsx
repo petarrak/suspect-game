@@ -8,26 +8,27 @@ export default function PageTransition({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
   return (
     <motion.div
       key={pathname}
       initial={{
         opacity: 0,
-        y: 14,
-        filter: "blur(6px)",
+        y: 10,
+        scale: 0.995,
       }}
       animate={{
         opacity: 1,
         y: 0,
-        filter: "blur(0px)",
+        scale: 1,
       }}
       transition={{
-        duration: 0.28,
+        duration: 0.22,
         ease: "easeOut",
       }}
-      className="min-h-[100dvh]"
+      className="min-h-[100dvh] w-full"
     >
       {children}
     </motion.div>

@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -15,6 +16,8 @@ import { motion } from "motion/react";
 
 import Button from "@/components/Button";
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -32,6 +35,7 @@ import {
 export default function WhoWouldRevealPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -43,39 +47,69 @@ export default function WhoWouldRevealPage() {
       ? rawRoomId[0]
       : rawRoomId;
 
-  const [question, setQuestion] =
+  const [
+    question,
+    setQuestion,
+  ] =
     useState<WhoWouldQuestion | null>(
       null
     );
 
-  const [reveal, setReveal] =
+  const [
+    reveal,
+    setReveal,
+  ] =
     useState<WhoWouldRevealData | null>(
       null
     );
 
-  const [room, setRoom] =
+  const [
+    room,
+    setRoom,
+  ] =
     useState<WhoWouldRoom | null>(
       null
     );
 
-  const [me, setMe] =
+  const [
+    me,
+    setMe,
+  ] =
     useState<WhoWouldPlayer | null>(
       null
     );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [continuing, setContinuing] =
-    useState(false);
+  const [
+    continuing,
+    setContinuing,
+  ] = useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
 
+  const revealSoundPlayed =
+    useRef(false);
+
+  const scoreSoundPlayed =
+    useRef(false);
+
+  const winnerSoundPlayed =
+    useRef(false);
+
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -86,22 +120,28 @@ export default function WhoWouldRevealPage() {
           freshReveal,
           freshRoom,
           freshMe,
-        ] = await Promise.all([
-          getWhoWouldQuestion(
-            roomId
-          ),
-          getWhoWouldReveal(
-            roomId
-          ),
-          getWhoWouldRoomById(
-            roomId
-          ),
-          getMyWhoWouldPlayerInRoom(
-            roomId
-          ),
-        ]);
+        ] =
+          await Promise.all([
+            getWhoWouldQuestion(
+              roomId
+            ),
 
-        if (cancelled) return;
+            getWhoWouldReveal(
+              roomId
+            ),
+
+            getWhoWouldRoomById(
+              roomId
+            ),
+
+            getMyWhoWouldPlayerInRoom(
+              roomId
+            ),
+          ]);
+
+        if (cancelled) {
+          return;
+        }
 
         if (
           !freshRoom ||
@@ -142,12 +182,16 @@ export default function WhoWouldRevealPage() {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load reveal."
+              (language === "hr"
+                ? "Nije moguće učitati reveal."
+                : "Could not load reveal.")
           );
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setLoading(
+            false
+          );
         }
       }
     }
@@ -164,44 +208,55 @@ export default function WhoWouldRevealPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `who-would-reveal-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "who_would_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as WhoWouldRoom;
+    const channel =
+      supabase
+        .channel(
+          `who-would-reveal-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+            schema:
+              "public",
+            table:
+              "who_would_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as WhoWouldRoom;
 
-          setRoom(updated);
-
-          if (
-            updated.status === "question"
-          ) {
-            router.replace(
-              `/who-would/question/${roomId}`
+            setRoom(
+              updated
             );
-          }
 
-          if (
-            updated.status === "ended"
-          ) {
-            router.replace(
-              `/who-would/results/${roomId}`
-            );
+            if (
+              updated.status ===
+              "question"
+            ) {
+              router.replace(
+                `/who-would/question/${roomId}`
+              );
+            }
+
+            if (
+              updated.status ===
+              "ended"
+            ) {
+              router.replace(
+                `/who-would/results/${roomId}`
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -215,7 +270,9 @@ export default function WhoWouldRevealPage() {
 
   const totalVotes =
     useMemo(() => {
-      if (!reveal) return 0;
+      if (!reveal) {
+        return 0;
+      }
 
       return reveal.results.reduce(
         (sum, item) =>
@@ -226,15 +283,125 @@ export default function WhoWouldRevealPage() {
 
   const maxVotes =
     useMemo(() => {
-      if (!reveal) return 0;
+      if (!reveal) {
+        return 0;
+      }
 
       return Math.max(
         0,
         ...reveal.results.map(
-          (item) => item.votes
+          (item) =>
+            item.votes
         )
       );
     }, [reveal]);
+
+  const finalRound =
+    reveal
+      ? reveal.round_number >=
+        reveal.total_rounds
+      : false;
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      revealSoundPlayed.current
+    ) {
+      return;
+    }
+
+    revealSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "reveal",
+            0.8
+          );
+        },
+        250
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    reveal,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      scoreSoundPlayed.current
+    ) {
+      return;
+    }
+
+    scoreSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "score",
+            0.65
+          );
+        },
+        950
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    reveal,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      !finalRound ||
+      winnerSoundPlayed.current
+    ) {
+      return;
+    }
+
+    winnerSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "winner",
+            0.8
+          );
+        },
+        1500
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    reveal,
+    finalRound,
+  ]);
 
   async function handleContinue() {
     if (
@@ -254,11 +421,23 @@ export default function WhoWouldRevealPage() {
           roomId
         );
 
-      if (next === "ended") {
+      if (
+        next === "ended"
+      ) {
+        playSound(
+          "winner",
+          0.85
+        );
+
         router.replace(
           `/who-would/results/${roomId}`
         );
       } else {
+        playSound(
+          "new-round",
+          0.75
+        );
+
         router.replace(
           `/who-would/question/${roomId}`
         );
@@ -266,21 +445,52 @@ export default function WhoWouldRevealPage() {
     } catch (e: any) {
       setError(
         e?.message ??
-          "Could not continue."
+          (language === "hr"
+            ? "Nije moguće nastaviti."
+            : "Could not continue.")
       );
 
-      setContinuing(false);
+      setContinuing(
+        false
+      );
     }
   }
 
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-white/50">
-          {language === "hr"
-            ? "Otkrivanje rezultata..."
-            : "Revealing results..."}
-        </p>
+        <motion.div
+          className="text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              scale: [
+                1,
+                1.08,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+            }}
+          >
+            🎉
+          </motion.div>
+
+          <p className="mt-4 text-white/50">
+            {language === "hr"
+              ? "Otkrivanje rezultata..."
+              : "Revealing results..."}
+          </p>
+        </motion.div>
       </main>
     );
   }
@@ -312,13 +522,19 @@ export default function WhoWouldRevealPage() {
       ? question.question_hr
       : question.question_en;
 
-  const finalRound =
-    reveal.round_number >=
-    reveal.total_rounds;
-
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6 pb-8">
-      <div className="text-center pt-5">
+    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-5 p-6 pb-8">
+      <motion.div
+        className="text-center pt-4"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
         <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
           😂 WHO WOULD?
         </p>
@@ -332,14 +548,30 @@ export default function WhoWouldRevealPage() {
           {reveal.total_rounds}
         </p>
 
-        <h1 className="mt-4 text-2xl font-black leading-snug">
+        <motion.h1
+          className="mt-4 text-2xl font-black leading-snug"
+          initial={{
+            opacity: 0,
+            scale: 0.95,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.2,
+          }}
+        >
           {text}
-        </h1>
-      </div>
+        </motion.h1>
+      </motion.div>
 
       <section className="flex flex-col gap-3">
         {reveal.results.map(
-          (player, index) => {
+          (
+            player,
+            index
+          ) => {
             const winner =
               player.votes ===
                 maxVotes &&
@@ -356,56 +588,199 @@ export default function WhoWouldRevealPage() {
 
             return (
               <motion.div
-                key={player.player_id}
-                className={`rounded-2xl border p-4 ${
+                key={
+                  player.player_id
+                }
+                className={`relative overflow-hidden rounded-2xl border p-4 ${
                   winner
-                    ? "border-accent bg-accent/15"
+                    ? "border-accent bg-accent/15 shadow-lg shadow-accent/10"
                     : "border-white/10 bg-panel2"
                 }`}
                 initial={{
                   opacity: 0,
-                  y: 16,
+                  y: 20,
+                  scale: 0.96,
                 }}
                 animate={{
                   opacity: 1,
                   y: 0,
+                  scale: 1,
                 }}
                 transition={{
                   delay:
-                    index * 0.06,
+                    0.3 +
+                    index * 0.08,
                 }}
               >
+                {winner && (
+                  <motion.div
+                    className="absolute right-3 top-2 text-xl"
+                    initial={{
+                      opacity: 0,
+                      scale: 0,
+                      rotate: -15,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                      rotate: 0,
+                    }}
+                    transition={{
+                      delay:
+                        0.8 +
+                        index *
+                          0.08,
+                      type:
+                        "spring",
+                    }}
+                  >
+                    👑
+                  </motion.div>
+                )}
+
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">
+                  <motion.span
+                    className="text-3xl"
+                    initial={{
+                      scale: 0.7,
+                    }}
+                    animate={{
+                      scale:
+                        winner
+                          ? [
+                              1,
+                              1.12,
+                              1,
+                            ]
+                          : 1,
+                    }}
+                    transition={{
+                      delay:
+                        0.45 +
+                        index *
+                          0.08,
+                    }}
+                  >
                     {player.avatar}
-                  </span>
+                  </motion.span>
 
                   <span className="min-w-0 flex-1 truncate font-black">
                     {player.nickname}
                   </span>
 
-                  <span className="font-black text-accent">
+                  <motion.span
+                    className="font-black text-accent"
+                    initial={{
+                      opacity: 0,
+                      scale: 0.7,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                    }}
+                    transition={{
+                      delay:
+                        0.6 +
+                        index *
+                          0.08,
+                      type:
+                        "spring",
+                    }}
+                  >
                     {player.votes}
-                  </span>
+                  </motion.span>
                 </div>
 
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
+                  <motion.div
                     className="h-full rounded-full bg-accent"
-                    style={{
-                      width: `${percent}%`,
+                    initial={{
+                      width: "0%",
+                    }}
+                    animate={{
+                      width:
+                        `${percent}%`,
+                    }}
+                    transition={{
+                      delay:
+                        0.55 +
+                        index *
+                          0.08,
+                      duration: 0.65,
                     }}
                   />
                 </div>
 
-                <p className="mt-2 text-right text-xs text-white/35">
+                <motion.p
+                  className="mt-2 text-right text-xs text-white/35"
+                  initial={{
+                    opacity: 0,
+                  }}
+                  animate={{
+                    opacity: 1,
+                  }}
+                  transition={{
+                    delay:
+                      0.9 +
+                      index *
+                        0.08,
+                  }}
+                >
                   {percent}%
-                </p>
+                </motion.p>
               </motion.div>
             );
           }
         )}
       </section>
+
+      {maxVotes === 0 && (
+        <motion.div
+          className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <p className="text-sm text-white/40">
+            {language === "hr"
+              ? "Nitko nije dobio glas."
+              : "Nobody received a vote."}
+          </p>
+        </motion.div>
+      )}
+
+      {finalRound && (
+        <motion.div
+          className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-center"
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 1.15,
+          }}
+        >
+          <p className="font-black text-yellow-300">
+            🏆{" "}
+            {language === "hr"
+              ? "ZADNJA RUNDA!"
+              : "FINAL ROUND!"}
+          </p>
+
+          <p className="mt-2 text-sm text-white/40">
+            {language === "hr"
+              ? "Sljedeće otvaramo završne rezultate."
+              : "Final results are next."}
+          </p>
+        </motion.div>
+      )}
 
       {error && (
         <p className="text-center text-sm text-accent">
@@ -413,11 +788,28 @@ export default function WhoWouldRevealPage() {
         </p>
       )}
 
-      <div className="mt-auto">
+      <motion.div
+        className="mt-auto"
+        initial={{
+          opacity: 0,
+          y: 15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 1,
+        }}
+      >
         {me.is_host ? (
           <Button
-            onClick={handleContinue}
-            disabled={continuing}
+            onClick={
+              handleContinue
+            }
+            disabled={
+              continuing
+            }
           >
             {continuing
               ? language === "hr"
@@ -438,7 +830,7 @@ export default function WhoWouldRevealPage() {
               : "Waiting for host..."}
           </p>
         )}
-      </div>
+      </motion.div>
     </main>
   );
 }

@@ -5,15 +5,21 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
   useParams,
   useRouter,
 } from "next/navigation";
+
+import { motion } from "motion/react";
+
 import { useLanguage } from "@/components/LanguageProvider";
+
 import {
   playSound,
   stopSound,
 } from "@/lib/sounds";
+
 import {
   getMyPlayerInRoom,
   getRoomById,
@@ -23,30 +29,54 @@ import {
 export default function QuestionPage() {
   const params = useParams();
   const router = useRouter();
-  const { language, t } = useLanguage();
+
+  const { language, t } =
+    useLanguage();
 
   const roomId =
     params.roomId as string;
 
-  const [questionText, setQuestionText] =
-    useState<string | null>(null);
+  const [
+    questionText,
+    setQuestionText,
+  ] = useState<string | null>(
+    null
+  );
 
-  const [roundNumber, setRoundNumber] =
-    useState<number | null>(null);
+  const [
+    roundNumber,
+    setRoundNumber,
+  ] = useState<number | null>(
+    null
+  );
 
-  const [questionTime, setQuestionTime] =
-    useState(20);
+  const [
+    questionTime,
+    setQuestionTime,
+  ] = useState(20);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null
+  );
 
-  const [countdown, setCountdown] =
-    useState(20);
+  const [
+    countdown,
+    setCountdown,
+  ] = useState(20);
 
-  const hasNavigated = useRef(false);
+  const hasNavigated =
+    useRef(false);
+
+  const revealSoundPlayed =
+    useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +87,9 @@ export default function QuestionPage() {
 
       try {
         const room =
-          await getRoomById(roomId);
+          await getRoomById(
+            roomId
+          );
 
         if (!room) {
           throw new Error(
@@ -67,7 +99,9 @@ export default function QuestionPage() {
           );
         }
 
-        if (!room.current_round_id) {
+        if (
+          !room.current_round_id
+        ) {
           throw new Error(
             language === "hr"
               ? "Ova soba još nema aktivnu rundu."
@@ -102,7 +136,9 @@ export default function QuestionPage() {
           );
         }
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setQuestionText(
           roundQuestion.question_text
@@ -113,17 +149,28 @@ export default function QuestionPage() {
         );
 
         const seconds =
-          room.question_time ?? 20;
+          room.question_time ??
+          20;
 
-        setQuestionTime(seconds);
+        setQuestionTime(
+          seconds
+        );
 
-        setCountdown(seconds);
+        setCountdown(
+          seconds
+        );
 
-        hasNavigated.current = false;
+        hasNavigated.current =
+          false;
+
+        revealSoundPlayed.current =
+          false;
 
         setLoading(false);
       } catch (e: any) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setError(
           e?.message ??
@@ -136,15 +183,53 @@ export default function QuestionPage() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       cancelled = true;
-      stopSound("tick");
+
+      stopSound(
+        "tick"
+      );
     };
   }, [
     roomId,
     language,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      error ||
+      !questionText ||
+      revealSoundPlayed.current
+    ) {
+      return;
+    }
+
+    revealSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "reveal",
+            0.65
+          );
+        },
+        200
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    error,
+    questionText,
   ]);
 
   useEffect(() => {
@@ -155,11 +240,18 @@ export default function QuestionPage() {
       return;
     }
 
-    if (countdown <= 0) {
-      stopSound("tick");
+    if (
+      countdown <= 0
+    ) {
+      stopSound(
+        "tick"
+      );
 
-      if (!hasNavigated.current) {
-        hasNavigated.current = true;
+      if (
+        !hasNavigated.current
+      ) {
+        hasNavigated.current =
+          true;
 
         router.push(
           `/answer/${roomId}`
@@ -169,21 +261,34 @@ export default function QuestionPage() {
       return;
     }
 
-    if (countdown <= 5) {
-      playSound("tick");
+    if (
+      countdown <= 5
+    ) {
+      playSound(
+        "tick",
+        0.65
+      );
 
       const stopTickTimer =
-        window.setTimeout(() => {
-          stopSound("tick");
-        }, 250);
+        window.setTimeout(
+          () => {
+            stopSound(
+              "tick"
+            );
+          },
+          250
+        );
 
       const countdownTimer =
-        window.setTimeout(() => {
-          setCountdown(
-            (current) =>
-              current - 1
-          );
-        }, 1000);
+        window.setTimeout(
+          () => {
+            setCountdown(
+              (current) =>
+                current - 1
+            );
+          },
+          1000
+        );
 
       return () => {
         window.clearTimeout(
@@ -194,17 +299,22 @@ export default function QuestionPage() {
           countdownTimer
         );
 
-        stopSound("tick");
+        stopSound(
+          "tick"
+        );
       };
     }
 
     const timer =
-      window.setTimeout(() => {
-        setCountdown(
-          (current) =>
-            current - 1
-        );
-      }, 1000);
+      window.setTimeout(
+        () => {
+          setCountdown(
+            (current) =>
+              current - 1
+          );
+        },
+        1000
+      );
 
     return () => {
       window.clearTimeout(
@@ -222,19 +332,46 @@ export default function QuestionPage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-white/50 text-center">
-          {language === "hr"
-            ? "Učitavanje tvog pitanja..."
-            : "Loading your question..."}
-        </p>
+        <motion.div
+          className="text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              scale: [
+                1,
+                1.08,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+            }}
+          >
+            🕵️
+          </motion.div>
+
+          <p className="mt-4 text-white/50">
+            {language === "hr"
+              ? "Učitavanje tvog pitanja..."
+              : "Loading your question..."}
+          </p>
+        </motion.div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
-        <p className="text-accent text-center">
+      <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center">
+        <p className="text-accent">
           {error}
         </p>
 
@@ -253,41 +390,155 @@ export default function QuestionPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-4">
-        <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+      <motion.div
+        className="text-center pt-5"
+        initial={{
+          opacity: 0,
+          y: -15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
+        <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
+          🕵️ SUSPECT
+        </p>
+
+        <p className="mt-2 text-sm text-white/35">
           {t("round")}{" "}
           {roundNumber}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="card px-6 py-10 flex flex-col items-center gap-4 text-center">
-        <span className="text-xs uppercase tracking-widest text-white/40">
+      <motion.div
+        className="card mt-auto mb-auto px-6 py-10 flex flex-col items-center gap-4 text-center"
+        initial={{
+          opacity: 0,
+          scale: 0.8,
+          y: 30,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+          y: 0,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 160,
+          damping: 14,
+        }}
+      >
+        <motion.div
+          className="text-6xl"
+          initial={{
+            scale: 0,
+            rotate: -15,
+          }}
+          animate={{
+            scale: 1,
+            rotate: 0,
+          }}
+          transition={{
+            delay: 0.15,
+            type: "spring",
+            stiffness: 220,
+          }}
+        >
+          ❓
+        </motion.div>
+
+        <motion.span
+          className="text-xs uppercase tracking-widest text-white/40"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.25,
+          }}
+        >
           {language === "hr"
             ? "Tvoje pitanje"
             : "Your question"}
-        </span>
+        </motion.span>
 
-        <p className="text-2xl font-semibold leading-snug">
+        <motion.p
+          className="text-2xl font-semibold leading-snug"
+          initial={{
+            opacity: 0,
+            y: 15,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.35,
+          }}
+        >
           {questionText}
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
 
-      <p className="text-center text-white/40 text-sm">
+      <motion.p
+        className="text-center text-white/40 text-sm"
+        initial={{
+          opacity: 0,
+        }}
+        animate={{
+          opacity: 1,
+        }}
+        transition={{
+          delay: 0.45,
+        }}
+      >
         {language === "hr"
           ? "Nemoj nikome pokazivati ovaj ekran."
           : "Don't show this screen to anyone."}
-      </p>
+      </motion.p>
 
-      <div className="mt-auto flex flex-col items-center gap-2">
-        <span
-          className={`font-bold text-accent transition-all ${
+      <motion.div
+        className="mt-auto flex flex-col items-center gap-2 pb-4"
+        initial={{
+          opacity: 0,
+          y: 15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.5,
+        }}
+      >
+        <motion.span
+          key={countdown}
+          initial={
             countdown <= 5
-              ? "text-6xl scale-110"
+              ? {
+                  scale: 1.25,
+                }
+              : {
+                  scale: 1,
+                }
+          }
+          animate={{
+            scale: 1,
+          }}
+          transition={{
+            duration: 0.2,
+          }}
+          className={`font-bold text-accent tabular-nums ${
+            countdown <= 5
+              ? "text-6xl"
               : "text-4xl"
           }`}
         >
           {countdown}
-        </span>
+        </motion.span>
 
         <span className="text-white/40 text-sm">
           {language === "hr"
@@ -300,7 +551,7 @@ export default function QuestionPage() {
             ? "Automatski nastavljamo..."
             : "Continuing automatically..."}
         </span>
-      </div>
+      </motion.div>
     </main>
   );
 }

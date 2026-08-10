@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -11,7 +12,11 @@ import {
   useRouter,
 } from "next/navigation";
 
+import { motion } from "motion/react";
+
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -25,6 +30,7 @@ import {
 export default function MafiaNightPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -36,7 +42,10 @@ export default function MafiaNightPage() {
       ? rawRoomId[0]
       : rawRoomId;
 
-  const [state, setState] =
+  const [
+    state,
+    setState,
+  ] =
     useState<MafiaNightState | null>(
       null
     );
@@ -44,25 +53,64 @@ export default function MafiaNightPage() {
   const [
     actionResult,
     setActionResult,
-  ] = useState<MafiaNightActionResult | null>(
-    null
-  );
+  ] =
+    useState<MafiaNightActionResult | null>(
+      null
+    );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [submitting, setSubmitting] =
+  const [
+    submitting,
+    setSubmitting,
+  ] =
     useState<string | null>(
       null
     );
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
+
+  const nightSoundPlayed =
+    useRef(false);
+
+  const morningSoundPlayed =
+    useRef(false);
+
+  function goToDay() {
+    if (!roomId) {
+      return;
+    }
+
+    if (
+      !morningSoundPlayed.current
+    ) {
+      morningSoundPlayed.current =
+        true;
+
+      playSound(
+        "reveal",
+        0.7
+      );
+    }
+
+    router.replace(
+      `/mafia/day/${roomId}`
+    );
+  }
 
   async function refreshState() {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     const fresh =
       await getMafiaNightState(
@@ -74,14 +122,14 @@ export default function MafiaNightPage() {
     if (
       fresh.status === "day"
     ) {
-      router.replace(
-        `/mafia/day/${roomId}`
-      );
+      goToDay();
     }
   }
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -92,22 +140,24 @@ export default function MafiaNightPage() {
             roomId
           );
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setState(fresh);
 
         if (
           fresh.status === "day"
         ) {
-          router.replace(
-            `/mafia/day/${roomId}`
-          );
+          goToDay();
         }
       } catch (e: any) {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load night."
+              (language === "hr"
+                ? "Nije moguće učitati noć."
+                : "Could not load night.")
           );
         }
       } finally {
@@ -124,38 +174,62 @@ export default function MafiaNightPage() {
     };
   }, [
     roomId,
+    language,
     router,
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (
+      loading ||
+      !state ||
+      nightSoundPlayed.current
+    ) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `mafia-night-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "mafia_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as MafiaRoom;
+    nightSoundPlayed.current =
+      true;
 
-          if (
-            updated.status === "day"
-          ) {
-            router.replace(
-              `/mafia/day/${roomId}`
-            );
+    playSound(
+      "start",
+      0.45
+    );
+  }, [
+    loading,
+    state,
+  ]);
+
+  useEffect(() => {
+    if (!roomId) {
+      return;
+    }
+
+    const channel =
+      supabase
+        .channel(
+          `mafia-night-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "mafia_rooms",
+            filter: `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as MafiaRoom;
+
+            if (
+              updated.status ===
+              "day"
+            ) {
+              goToDay();
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -169,13 +243,18 @@ export default function MafiaNightPage() {
 
   const eligibleTargets =
     useMemo(() => {
-      if (!state) return [];
+      if (!state) {
+        return [];
+      }
 
-      if (state.my_role === "MAFIA") {
+      if (
+        state.my_role ===
+        "MAFIA"
+      ) {
         return state.players.filter(
           (player) =>
             player.id !==
-              state.my_player_id
+            state.my_player_id
         );
       }
 
@@ -186,7 +265,7 @@ export default function MafiaNightPage() {
         return state.players.filter(
           (player) =>
             player.id !==
-              state.my_player_id
+            state.my_player_id
         );
       }
 
@@ -198,28 +277,92 @@ export default function MafiaNightPage() {
   ) {
     if (
       !roomId ||
-      submitting
+      submitting ||
+      !state
     ) {
       return;
     }
 
-    setSubmitting(playerId);
+    setSubmitting(
+      playerId
+    );
+
     setError(null);
 
     try {
+      if (
+        state.my_role ===
+        "MAFIA"
+      ) {
+        playSound(
+          "combat",
+          0.75
+        );
+      } else if (
+        state.my_role ===
+        "DOCTOR"
+      ) {
+        playSound(
+          "click",
+          0.6
+        );
+      } else if (
+        state.my_role ===
+        "DETECTIVE"
+      ) {
+        playSound(
+          "reveal",
+          0.65
+        );
+      }
+
       const result =
         await submitMafiaNightAction(
           roomId,
           playerId
         );
 
-      setActionResult(result);
+      setActionResult(
+        result
+      );
+
+      if (
+        state.my_role ===
+          "DETECTIVE" &&
+        result.action_type ===
+          "INVESTIGATE"
+      ) {
+        window.setTimeout(
+          () => {
+            if (
+              result.investigation_is_mafia
+            ) {
+              playSound(
+                "caught",
+                0.75
+              );
+            } else {
+              playSound(
+                "click",
+                0.65
+              );
+            }
+          },
+          250
+        );
+      }
 
       if (
         result.night_resolved
       ) {
-        router.replace(
-          `/mafia/day/${roomId}`
+        window.setTimeout(
+          () => {
+            goToDay();
+          },
+          state.my_role ===
+            "DETECTIVE"
+            ? 850
+            : 250
         );
 
         return;
@@ -234,18 +377,47 @@ export default function MafiaNightPage() {
             : "Action was not saved.")
       );
     } finally {
-      setSubmitting(null);
+      setSubmitting(
+        null
+      );
     }
   }
 
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-white/50">
-          {language === "hr"
-            ? "Noć počinje..."
-            : "Night is beginning..."}
-        </p>
+        <motion.div
+          className="text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              scale: [
+                1,
+                1.08,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+            }}
+          >
+            🌙
+          </motion.div>
+
+          <p className="mt-4 text-white/50">
+            {language === "hr"
+              ? "Noć počinje..."
+              : "Night is beginning..."}
+          </p>
+        </motion.div>
       </main>
     );
   }
@@ -268,19 +440,23 @@ export default function MafiaNightPage() {
   }
 
   const hasAction =
-    state.my_role !== "CIVILIAN" &&
+    state.my_role !==
+      "CIVILIAN" &&
     state.my_is_alive;
 
   const title =
-    state.my_role === "MAFIA"
+    state.my_role ===
+    "MAFIA"
       ? language === "hr"
         ? "ODABERI ŽRTVU"
         : "CHOOSE A VICTIM"
-      : state.my_role === "DOCTOR"
+      : state.my_role ===
+        "DOCTOR"
       ? language === "hr"
         ? "KOGA ŽELIŠ SPASITI?"
         : "WHO DO YOU WANT TO SAVE?"
-      : state.my_role === "DETECTIVE"
+      : state.my_role ===
+        "DETECTIVE"
       ? language === "hr"
         ? "KOGA ŽELIŠ ISTRAŽITI?"
         : "WHO DO YOU WANT TO INVESTIGATE?"
@@ -289,39 +465,114 @@ export default function MafiaNightPage() {
       : "SLEEP...";
 
   const emoji =
-    state.my_role === "MAFIA"
+    state.my_role ===
+    "MAFIA"
       ? "🔪"
-      : state.my_role === "DOCTOR"
+      : state.my_role ===
+        "DOCTOR"
       ? "💉"
-      : state.my_role === "DETECTIVE"
+      : state.my_role ===
+        "DETECTIVE"
       ? "🔎"
       : "🌙";
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-5">
-        <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
+      <motion.div
+        className="text-center pt-5"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.45,
+        }}
+      >
+        <motion.p
+          className="text-xs font-black uppercase tracking-[0.25em] text-accent"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
           🌙{" "}
           {language === "hr"
             ? "NOĆ"
             : "NIGHT"}{" "}
           {state.day_number}
-        </p>
+        </motion.p>
 
-        <div className="mt-5 text-6xl">
+        <motion.div
+          className="mt-5 text-6xl"
+          initial={{
+            opacity: 0,
+            scale: 0,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.15,
+            type: "spring",
+            stiffness: 180,
+          }}
+        >
           {emoji}
-        </div>
+        </motion.div>
 
-        <h1 className="mt-3 text-3xl font-black">
+        <motion.h1
+          className="mt-3 text-3xl font-black"
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.25,
+          }}
+        >
           {title}
-        </h1>
-      </div>
+        </motion.h1>
+      </motion.div>
 
       {!state.my_is_alive ? (
-        <div className="mt-auto mb-auto rounded-3xl border border-white/10 bg-panel2 p-7 text-center">
-          <div className="text-6xl">
+        <motion.div
+          className="mt-auto mb-auto rounded-3xl border border-white/10 bg-panel2 p-7 text-center"
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              y: [
+                0,
+                -8,
+                0,
+              ],
+            }}
+            transition={{
+              duration: 2.2,
+              repeat: Infinity,
+            }}
+          >
             👻
-          </div>
+          </motion.div>
 
           <p className="mt-4 text-xl font-black">
             {language === "hr"
@@ -334,26 +585,45 @@ export default function MafiaNightPage() {
               ? "Možeš pratiti igru, ali više nemaš noćnu akciju."
               : "You can watch the game, but you no longer have a night action."}
           </p>
-        </div>
+        </motion.div>
       ) : hasAction ? (
         <>
-          <p className="text-center text-sm text-white/40">
-            {state.my_role === "MAFIA"
-              ? language === "hr"
+          <motion.p
+            className="text-center text-sm text-white/40"
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            transition={{
+              delay: 0.35,
+            }}
+          >
+            {state.my_role ===
+            "MAFIA"
+              ? language ===
+                "hr"
                 ? "Odaberi igrača kojeg Mafija želi ukloniti."
                 : "Choose the player the Mafia wants to eliminate."
-              : state.my_role === "DOCTOR"
-              ? language === "hr"
+              : state.my_role ===
+                "DOCTOR"
+              ? language ===
+                "hr"
                 ? "Možeš spasiti bilo kojeg živog igrača, uključujući sebe."
                 : "You may save any living player, including yourself."
-              : language === "hr"
+              : language ===
+                "hr"
               ? "Rezultat istrage vidiš samo ti."
               : "Only you will see the investigation result."}
-          </p>
+          </motion.p>
 
           <section className="flex flex-col gap-3">
             {eligibleTargets.map(
-              (player) => {
+              (
+                player,
+                index
+              ) => {
                 const selected =
                   state.selected_target_player_id ===
                     player.id ||
@@ -361,37 +631,64 @@ export default function MafiaNightPage() {
                     player.id;
 
                 return (
-                  <button
-                    key={player.id}
+                  <motion.button
+                    key={
+                      player.id
+                    }
                     type="button"
                     disabled={
-                      submitting !== null
+                      submitting !==
+                      null
                     }
                     onClick={() =>
                       handleAction(
                         player.id
                       )
                     }
-                    className={`flex items-center gap-4 rounded-2xl border px-4 py-4 text-left active:scale-[0.98] ${
+                    initial={{
+                      opacity: 0,
+                      x: -15,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      x: 0,
+                    }}
+                    transition={{
+                      delay:
+                        0.4 +
+                        index *
+                          0.05,
+                    }}
+                    whileTap={{
+                      scale: 0.97,
+                    }}
+                    className={`flex items-center gap-4 rounded-2xl border px-4 py-4 text-left transition ${
                       selected
                         ? "border-accent bg-accent/15"
                         : "border-white/10 bg-panel2"
                     }`}
                   >
                     <span className="text-3xl">
-                      {player.avatar}
+                      {
+                        player.avatar
+                      }
                     </span>
 
                     <span className="min-w-0 flex-1 truncate font-black">
-                      {player.nickname}
+                      {
+                        player.nickname
+                      }
                     </span>
 
                     <span>
-                      {selected
+                      {submitting ===
+                      player.id
+                        ? "..."
+                        : selected
                         ? "✅"
                         : "›"}
                     </span>
-                  </button>
+                  </motion.button>
                 );
               }
             )}
@@ -401,34 +698,102 @@ export default function MafiaNightPage() {
             "DETECTIVE" &&
             actionResult?.action_type ===
               "INVESTIGATE" && (
-              <div
+              <motion.div
                 className={`rounded-3xl border p-6 text-center ${
                   actionResult.investigation_is_mafia
                     ? "border-red-400/30 bg-red-400/10"
                     : "border-green-400/30 bg-green-400/10"
                 }`}
+                initial={{
+                  opacity: 0,
+                  scale: 0.8,
+                  y: 20,
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  y: 0,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 180,
+                }}
               >
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-white/35">
+                <motion.div
+                  className="text-5xl"
+                  initial={{
+                    scale: 0,
+                  }}
+                  animate={{
+                    scale: 1,
+                  }}
+                  transition={{
+                    delay: 0.1,
+                    type: "spring",
+                    stiffness: 220,
+                  }}
+                >
+                  {actionResult.investigation_is_mafia
+                    ? "🔪"
+                    : "✅"}
+                </motion.div>
+
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-white/35">
                   {language === "hr"
                     ? "REZULTAT ISTRAGE"
                     : "INVESTIGATION RESULT"}
                 </p>
 
-                <p className="mt-3 text-2xl font-black">
+                <motion.p
+                  className={`mt-3 text-2xl font-black ${
+                    actionResult.investigation_is_mafia
+                      ? "text-red-300"
+                      : "text-green-300"
+                  }`}
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  transition={{
+                    delay: 0.2,
+                  }}
+                >
                   {actionResult.investigation_is_mafia
-                    ? language === "hr"
-                      ? "🔪 OVAJ IGRAČ JE MAFIJA"
-                      : "🔪 THIS PLAYER IS MAFIA"
-                    : language === "hr"
-                    ? "✅ OVAJ IGRAČ NIJE MAFIJA"
-                    : "✅ THIS PLAYER IS NOT MAFIA"}
+                    ? language ===
+                      "hr"
+                      ? "OVAJ IGRAČ JE MAFIJA"
+                      : "THIS PLAYER IS MAFIA"
+                    : language ===
+                      "hr"
+                    ? "OVAJ IGRAČ NIJE MAFIJA"
+                    : "THIS PLAYER IS NOT MAFIA"}
+                </motion.p>
+
+                <p className="mt-3 text-xs text-white/35">
+                  {language === "hr"
+                    ? "Ovaj rezultat vidiš samo ti."
+                    : "Only you can see this result."}
                 </p>
-              </div>
+              </motion.div>
             )}
 
           {(state.selected_target_player_id ||
             actionResult) && (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
+            <motion.div
+              className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center"
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+            >
               <p className="font-black text-green-300">
                 ✅{" "}
                 {language === "hr"
@@ -441,14 +806,42 @@ export default function MafiaNightPage() {
                   ? "Čekamo ostale noćne uloge."
                   : "Waiting for the other night roles."}
               </p>
-            </div>
+            </motion.div>
           )}
         </>
       ) : (
-        <div className="mt-auto mb-auto rounded-3xl border border-white/10 bg-panel2 p-8 text-center">
-          <div className="text-7xl">
+        <motion.div
+          className="mt-auto mb-auto rounded-3xl border border-white/10 bg-panel2 p-8 text-center"
+          initial={{
+            opacity: 0,
+            scale: 0.92,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+        >
+          <motion.div
+            className="text-7xl"
+            animate={{
+              rotate: [
+                -3,
+                3,
+                -3,
+              ],
+              scale: [
+                1,
+                1.04,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+            }}
+          >
             😴
-          </div>
+          </motion.div>
 
           <h2 className="mt-5 text-2xl font-black">
             {language === "hr"
@@ -461,7 +854,7 @@ export default function MafiaNightPage() {
               ? "Civili nemaju noćnu akciju. Ne pokazuj drugima svoju ulogu."
               : "Civilians have no night action. Keep your role secret."}
           </p>
-        </div>
+        </motion.div>
       )}
 
       {error && (

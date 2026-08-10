@@ -10,11 +10,14 @@ import {
   useRouter,
 } from "next/navigation";
 
+import { motion } from "motion/react";
 import QRCode from "react-qr-code";
 
 import Button from "@/components/Button";
 import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 
 import {
   getRememberedWhoWouldPlayerId,
@@ -166,6 +169,11 @@ export default function WhoWouldRoomPage() {
     setSettingsError(null);
 
     try {
+      playSound(
+        "click",
+        0.45
+      );
+
       await updateWhoWouldSettings(
         room.id,
         patch
@@ -195,6 +203,11 @@ export default function WhoWouldRoomPage() {
     setSettingsError(null);
 
     try {
+      playSound(
+        "click",
+        0.45
+      );
+
       await kickWhoWouldPlayer(
         room.id,
         playerId
@@ -210,7 +223,9 @@ export default function WhoWouldRoomPage() {
   }
 
   useEffect(() => {
-    if (!room) return;
+    if (!room) {
+      return;
+    }
 
     if (
       room.status === "question"
@@ -254,6 +269,11 @@ export default function WhoWouldRoomPage() {
     setStartError(null);
 
     try {
+      playSound(
+        "start",
+        0.85
+      );
+
       await startWhoWouldGame(
         room.id
       );
@@ -276,11 +296,38 @@ export default function WhoWouldRoomPage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <p className="text-white/50">
-          {language === "hr"
-            ? "Učitavanje sobe..."
-            : "Loading room..."}
-        </p>
+        <motion.div
+          className="text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              scale: [
+                1,
+                1.08,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 1.4,
+              repeat: Infinity,
+            }}
+          >
+            😂
+          </motion.div>
+
+          <p className="mt-4 text-white/50">
+            {language === "hr"
+              ? "Učitavanje sobe..."
+              : "Loading room..."}
+          </p>
+        </motion.div>
       </main>
     );
   }
@@ -302,9 +349,22 @@ export default function WhoWouldRoomPage() {
   if (!me) {
     return (
       <main className="min-h-screen max-w-md mx-auto flex flex-col items-center justify-center gap-5 p-6 text-center">
-        <div className="text-5xl">
+        <motion.div
+          className="text-5xl"
+          initial={{
+            opacity: 0,
+            scale: 0.5,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            type: "spring",
+          }}
+        >
           😂
-        </div>
+        </motion.div>
 
         <h1 className="text-2xl font-black">
           {language === "hr"
@@ -332,21 +392,83 @@ export default function WhoWouldRoomPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-3">
-        <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
+      <motion.div
+        className="text-center pt-3"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
+        <motion.p
+          className="text-xs font-black uppercase tracking-[0.25em] text-accent"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.1,
+          }}
+        >
           😂 WHO WOULD?
-        </p>
+        </motion.p>
 
-        <h1 className="mt-1 text-3xl font-black">
+        <motion.h1
+          className="mt-1 text-3xl font-black"
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.15,
+            type: "spring",
+          }}
+        >
           LOBBY
-        </h1>
-      </div>
+        </motion.h1>
+      </motion.div>
 
-      <RoomCodeDisplay
-        code={room.code}
-      />
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.2,
+        }}
+      >
+        <RoomCodeDisplay
+          code={room.code}
+        />
+      </motion.div>
 
-      <div className="flex flex-col items-center gap-3">
+      <motion.div
+        className="flex flex-col items-center gap-3"
+        initial={{
+          opacity: 0,
+          scale: 0.95,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+        }}
+        transition={{
+          delay: 0.25,
+        }}
+      >
         <div className="rounded-2xl bg-white p-4">
           <QRCode
             value={`${window.location.origin}/who-would/join?code=${room.code}`}
@@ -360,7 +482,7 @@ export default function WhoWouldRoomPage() {
             ? "Skeniraj za pridruživanje"
             : "Scan to join"}
         </p>
-      </div>
+      </motion.div>
 
       <section className="flex flex-col gap-3">
         <p className="text-xs font-black uppercase tracking-widest text-white/35">
@@ -371,14 +493,41 @@ export default function WhoWouldRoomPage() {
         </p>
 
         {players.map(
-          (player) => (
-            <div
+          (
+            player,
+            index
+          ) => (
+            <motion.div
               key={player.id}
               className="flex items-center gap-3 rounded-2xl border border-white/10 bg-panel2 px-4 py-3"
+              initial={{
+                opacity: 0,
+                x: -15,
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+              }}
+              transition={{
+                delay:
+                  0.3 +
+                  index * 0.05,
+              }}
             >
-              <div className="text-3xl">
+              <motion.div
+                className="text-3xl"
+                initial={{
+                  scale: 0.7,
+                }}
+                animate={{
+                  scale: 1,
+                }}
+                transition={{
+                  type: "spring",
+                }}
+              >
                 {player.avatar}
-              </div>
+              </motion.div>
 
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold">
@@ -405,32 +554,45 @@ export default function WhoWouldRoomPage() {
 
               {me.is_host &&
                 !player.is_host && (
-                <button
-                  type="button"
-                  disabled={
-                    kickingId ===
-                    player.id
-                  }
-                  onClick={() =>
-                    handleKick(
+                  <button
+                    type="button"
+                    disabled={
+                      kickingId ===
                       player.id
-                    )
-                  }
-                  className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
-                >
-                  {kickingId ===
-                  player.id
-                    ? "..."
-                    : "👢"}
-                </button>
-              )}
-            </div>
+                    }
+                    onClick={() =>
+                      handleKick(
+                        player.id
+                      )
+                    }
+                    className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300 transition active:scale-95"
+                  >
+                    {kickingId ===
+                    player.id
+                      ? "..."
+                      : "👢"}
+                  </button>
+                )}
+            </motion.div>
           )
         )}
       </section>
 
       {me.is_host && (
-        <section className="card p-5 flex flex-col gap-6">
+        <motion.section
+          className="card p-5 flex flex-col gap-6"
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.4,
+          }}
+        >
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
               HOST
@@ -459,7 +621,7 @@ export default function WhoWouldRoomPage() {
             <div className="grid grid-cols-4 gap-2">
               {ROUND_OPTIONS.map(
                 (rounds) => (
-                  <button
+                  <motion.button
                     key={rounds}
                     disabled={
                       settingsLoading
@@ -470,6 +632,9 @@ export default function WhoWouldRoomPage() {
                           rounds,
                       })
                     }
+                    whileTap={{
+                      scale: 0.94,
+                    }}
                     className={`rounded-xl border py-3 font-black ${
                       room.total_rounds ===
                       rounds
@@ -478,7 +643,7 @@ export default function WhoWouldRoomPage() {
                     }`}
                   >
                     {rounds}
-                  </button>
+                  </motion.button>
                 )
               )}
             </div>
@@ -494,8 +659,10 @@ export default function WhoWouldRoomPage() {
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(
                 (category) => (
-                  <button
-                    key={category.id}
+                  <motion.button
+                    key={
+                      category.id
+                    }
                     disabled={
                       settingsLoading
                     }
@@ -505,6 +672,9 @@ export default function WhoWouldRoomPage() {
                           category.id,
                       })
                     }
+                    whileTap={{
+                      scale: 0.96,
+                    }}
                     className={`rounded-2xl border p-4 text-left ${
                       room.category ===
                       category.id
@@ -521,7 +691,7 @@ export default function WhoWouldRoomPage() {
                         ? category.hr
                         : category.en}
                     </p>
-                  </button>
+                  </motion.button>
                 )
               )}
             </div>
@@ -532,18 +702,39 @@ export default function WhoWouldRoomPage() {
               {settingsError}
             </p>
           )}
-        </section>
+        </motion.section>
       )}
 
       {!canStart && (
-        <p className="text-center text-sm text-white/40">
+        <motion.p
+          className="text-center text-sm text-white/40"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
           {language === "hr"
             ? "Potrebna su najmanje 3 igrača."
             : "At least 3 players are required."}
-        </p>
+        </motion.p>
       )}
 
-      <div className="mt-auto">
+      <motion.div
+        className="mt-auto"
+        initial={{
+          opacity: 0,
+          y: 15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.5,
+        }}
+      >
         {me.is_host ? (
           <>
             {startError && (
@@ -553,8 +744,13 @@ export default function WhoWouldRoomPage() {
             )}
 
             <Button
-              disabled={!canStart || startLoading}
-              onClick={handleStart}
+              disabled={
+                !canStart ||
+                startLoading
+              }
+              onClick={
+                handleStart
+              }
             >
               {startLoading
                 ? language === "hr"
@@ -576,7 +772,7 @@ export default function WhoWouldRoomPage() {
               : "Waiting for host..."}
           </p>
         )}
-      </div>
+      </motion.div>
     </main>
   );
 }

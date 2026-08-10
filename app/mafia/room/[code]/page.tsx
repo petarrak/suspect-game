@@ -16,6 +16,8 @@ import Button from "@/components/Button";
 import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
 
+import { playSound } from "@/lib/sounds";
+
 import {
   getRememberedMafiaPlayerId,
   kickMafiaPlayer,
@@ -167,15 +169,21 @@ export default function MafiaRoomPage() {
   }
 
   useEffect(() => {
-    if (!room) return;
+    if (!room) {
+      return;
+    }
 
-    if (room.status === "role") {
+    if (
+      room.status === "role"
+    ) {
       router.replace(
         `/mafia/role/${room.id}`
       );
     }
 
-    if (room.status === "night") {
+    if (
+      room.status === "night"
+    ) {
       router.replace(
         `/mafia/night/${room.id}`
       );
@@ -199,6 +207,11 @@ export default function MafiaRoomPage() {
     setStartError(null);
 
     try {
+      playSound(
+        "start",
+        0.8
+      );
+
       await startMafiaGame(
         room.id
       );
@@ -353,8 +366,7 @@ export default function MafiaRoomPage() {
                     meId && (
                     <span className="text-white/35">
                       {" "}
-                      {language ===
-                      "hr"
+                      {language === "hr"
                         ? "(ti)"
                         : "(you)"}
                     </span>
@@ -370,25 +382,25 @@ export default function MafiaRoomPage() {
 
               {me.is_host &&
                 !player.is_host && (
-                <button
-                  type="button"
-                  disabled={
-                    kickingId ===
-                    player.id
-                  }
-                  onClick={() =>
-                    handleKick(
+                  <button
+                    type="button"
+                    disabled={
+                      kickingId ===
                       player.id
-                    )
-                  }
-                  className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
-                >
-                  {kickingId ===
-                  player.id
-                    ? "..."
-                    : "👢"}
-                </button>
-              )}
+                    }
+                    onClick={() =>
+                      handleKick(
+                        player.id
+                      )
+                    }
+                    className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+                  >
+                    {kickingId ===
+                    player.id
+                      ? "..."
+                      : "👢"}
+                  </button>
+                )}
             </div>
           )
         )}
@@ -631,8 +643,13 @@ export default function MafiaRoomPage() {
             )}
 
             <Button
-              disabled={!canStart || startLoading}
-              onClick={handleStart}
+              disabled={
+                !canStart ||
+                startLoading
+              }
+              onClick={
+                handleStart
+              }
             >
               {startLoading
                 ? language === "hr"

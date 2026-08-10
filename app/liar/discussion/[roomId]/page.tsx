@@ -15,6 +15,7 @@ import {
 import { motion } from "motion/react";
 
 import { useLanguage } from "@/components/LanguageProvider";
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -38,10 +39,14 @@ export default function LiarDiscussionPage() {
       : rawRoomId;
 
   const [room, setRoom] =
-    useState<LiarRoom | null>(null);
+    useState<LiarRoom | null>(
+      null
+    );
 
   const [me, setMe] =
-    useState<LiarPlayer | null>(null);
+    useState<LiarPlayer | null>(
+      null
+    );
 
   const [remaining, setRemaining] =
     useState(0);
@@ -50,10 +55,37 @@ export default function LiarDiscussionPage() {
     useState(true);
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const finishRequested =
     useRef(false);
+
+  const lastTickSecond =
+    useRef<number | null>(
+      null
+    );
+
+  const voteSoundPlayed =
+    useRef(false);
+
+  function goToVoting(
+    targetRoomId: string
+  ) {
+    if (!voteSoundPlayed.current) {
+      voteSoundPlayed.current = true;
+
+      playSound(
+        "vote",
+        0.75
+      );
+    }
+
+    router.replace(
+      `/liar/voting/${targetRoomId}`
+    );
+  }
 
   useEffect(() => {
     if (!roomId) {
@@ -75,11 +107,17 @@ export default function LiarDiscussionPage() {
           freshRoom,
           freshMe,
         ] = await Promise.all([
-          getLiarRoomById(roomId),
-          getMyLiarPlayerInRoom(roomId),
+          getLiarRoomById(
+            roomId
+          ),
+          getMyLiarPlayerInRoom(
+            roomId
+          ),
         ]);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         if (!freshRoom) {
           throw new Error(
@@ -100,10 +138,11 @@ export default function LiarDiscussionPage() {
         setRoom(freshRoom);
         setMe(freshMe);
 
-        if (freshRoom.status === "voting") {
-          router.replace(
-            `/liar/voting/${roomId}`
-          );
+        if (
+          freshRoom.status ===
+          "voting"
+        ) {
+          goToVoting(roomId);
         }
       } catch (e: any) {
         if (!cancelled) {
@@ -133,7 +172,9 @@ export default function LiarDiscussionPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     const channel = supabase
       .channel(
@@ -145,7 +186,8 @@ export default function LiarDiscussionPage() {
           event: "UPDATE",
           schema: "public",
           table: "liar_rooms",
-          filter: `id=eq.${roomId}`,
+          filter:
+            `id=eq.${roomId}`,
         },
         (payload) => {
           const updated =
@@ -153,10 +195,11 @@ export default function LiarDiscussionPage() {
 
           setRoom(updated);
 
-          if (updated.status === "voting") {
-            router.replace(
-              `/liar/voting/${roomId}`
-            );
+          if (
+            updated.status ===
+            "voting"
+          ) {
+            goToVoting(roomId);
           }
         }
       )
@@ -175,19 +218,31 @@ export default function LiarDiscussionPage() {
   useEffect(() => {
     if (
       !room ||
-      room.status !== "discussion" ||
+      room.status !==
+        "discussion" ||
       !room.discussion_started_at
     ) {
       return;
     }
 
-    finishRequested.current = false;
+    finishRequested.current =
+      false;
 
-    const currentRoom: LiarRoom = room;
+    lastTickSecond.current =
+      null;
+
+    voteSoundPlayed.current =
+      false;
+
+    const currentRoom: LiarRoom =
+      room;
+
     const discussionStartedAt: string =
       room.discussion_started_at;
+
     const discussionTime: number =
       room.discussion_time;
+
     const currentRoomId: string =
       room.id;
 
@@ -202,7 +257,8 @@ export default function LiarDiscussionPage() {
         discussionTime * 1000;
 
       const msLeft =
-        endsAt - Date.now();
+        endsAt -
+        Date.now();
 
       const secondsLeft =
         Math.max(
@@ -212,33 +268,57 @@ export default function LiarDiscussionPage() {
           )
         );
 
-      setRemaining(secondsLeft);
+      setRemaining(
+        secondsLeft
+      );
+
+      // Tick only once for each
+      // of the final 5 seconds.
+      if (
+        secondsLeft > 0 &&
+        secondsLeft <= 5 &&
+        lastTickSecond.current !==
+          secondsLeft
+      ) {
+        lastTickSecond.current =
+          secondsLeft;
+
+        playSound(
+          "tick",
+          0.65
+        );
+      }
 
       if (
         secondsLeft <= 0 &&
         !finishRequested.current
       ) {
-        finishRequested.current = true;
+        finishRequested.current =
+          true;
 
         void finishLiarDiscussionIfDue(
           currentRoomId
         )
-          .then((didFinish) => {
-            if (didFinish) {
-              router.replace(
-                `/liar/voting/${currentRoomId}`
-              );
-            } else {
-              finishRequested.current = false;
+          .then(
+            (didFinish) => {
+              if (didFinish) {
+                goToVoting(
+                  currentRoomId
+                );
+              } else {
+                finishRequested.current =
+                  false;
+              }
             }
-          })
+          )
           .catch((e) => {
             console.error(
               "Could not finish discussion:",
               e
             );
 
-            finishRequested.current = false;
+            finishRequested.current =
+              false;
           });
       }
     }
@@ -252,9 +332,14 @@ export default function LiarDiscussionPage() {
       );
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
     };
-  }, [room]);
+  }, [
+    room,
+    router,
+  ]);
 
   const progress =
     useMemo(() => {
@@ -263,7 +348,8 @@ export default function LiarDiscussionPage() {
       }
 
       if (
-        room.discussion_time <= 0
+        room.discussion_time <=
+        0
       ) {
         return 0;
       }
@@ -342,15 +428,34 @@ export default function LiarDiscussionPage() {
           scale: 1,
         }}
       >
-        <div
+        <motion.div
+          key={remaining}
+          initial={
+            remaining <= 5 &&
+            remaining > 0
+              ? {
+                  scale: 1.18,
+                }
+              : {
+                  scale: 1,
+                }
+          }
+          animate={{
+            scale: 1,
+          }}
+          transition={{
+            duration: 0.2,
+          }}
           className={`font-black tabular-nums transition-all ${
-            remaining <= 10
+            remaining <= 5
+              ? "text-8xl text-accent"
+              : remaining <= 10
               ? "text-8xl text-accent"
               : "text-7xl"
           }`}
         >
           {remaining}
-        </div>
+        </motion.div>
 
         <p className="mt-3 text-sm uppercase tracking-[0.2em] text-white/35">
           {language === "hr"
@@ -362,12 +467,26 @@ export default function LiarDiscussionPage() {
           <div
             className="h-full rounded-full bg-accent transition-[width] duration-300"
             style={{
-              width: `${progress}%`,
+              width:
+                `${progress}%`,
             }}
           />
         </div>
 
-        <div className="mt-8 rounded-3xl border border-white/10 bg-panel2 p-6 text-left">
+        <motion.div
+          className="mt-8 rounded-3xl border border-white/10 bg-panel2 p-6 text-left"
+          initial={{
+            opacity: 0,
+            y: 15,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.15,
+          }}
+        >
           <p className="text-sm font-black">
             🤥{" "}
             {language === "hr"
@@ -380,12 +499,17 @@ export default function LiarDiscussionPage() {
               ? "Svatko neka da jedan hint. Ne izgovaraj tajnu riječ. Liar mora blefirati i pokušati se uklopiti."
               : "Everyone gives one clue. Don't say the secret word. The Liar has to bluff and blend in."}
           </p>
-        </div>
+        </motion.div>
       </motion.section>
 
       <div className="pb-5 text-center">
         <p className="text-sm text-white/35">
-          {language === "hr"
+          {remaining <= 5 &&
+          remaining > 0
+            ? language === "hr"
+              ? "⚠️ Glasanje počinje za nekoliko sekundi..."
+              : "⚠️ Voting starts in a few seconds..."
+            : language === "hr"
             ? "Kad timer završi, glasanje počinje automatski."
             : "Voting starts automatically when the timer ends."}
         </p>

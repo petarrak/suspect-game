@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -11,8 +12,12 @@ import {
   useRouter,
 } from "next/navigation";
 
+import { motion } from "motion/react";
+
 import Button from "@/components/Button";
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -26,6 +31,7 @@ import {
 export default function LiarResultsPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -61,8 +67,16 @@ export default function LiarResultsPage() {
       null
     );
 
+  const winnerSoundPlayed =
+    useRef(false);
+
+  const scoreSoundPlayed =
+    useRef(false);
+
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -72,7 +86,9 @@ export default function LiarResultsPage() {
           freshRoom,
           freshMe,
         ] = await Promise.all([
-          getLiarRoomById(roomId),
+          getLiarRoomById(
+            roomId
+          ),
           getMyLiarPlayerInRoom(
             roomId
           ),
@@ -82,18 +98,26 @@ export default function LiarResultsPage() {
           data,
           error,
         } = await supabase
-          .from("liar_players")
+          .from(
+            "liar_players"
+          )
           .select("*")
           .eq(
             "room_id",
             roomId
           )
-          .order("score", {
-            ascending: false,
-          })
-          .order("joined_at", {
-            ascending: true,
-          });
+          .order(
+            "score",
+            {
+              ascending: false,
+            }
+          )
+          .order(
+            "joined_at",
+            {
+              ascending: true,
+            }
+          );
 
         if (error) {
           throw new Error(
@@ -109,10 +133,17 @@ export default function LiarResultsPage() {
           return;
         }
 
-        setRoom(freshRoom);
-        setMe(freshMe);
+        setRoom(
+          freshRoom
+        );
+
+        setMe(
+          freshMe
+        );
+
         setPlayers(
-          (data ?? []) as LiarPlayer[]
+          (data ??
+            []) as LiarPlayer[]
         );
       } catch (e: any) {
         if (!cancelled) {
@@ -136,36 +167,44 @@ export default function LiarResultsPage() {
   }, [roomId]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `liar-results-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "liar_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as LiarRoom;
+    const channel =
+      supabase
+        .channel(
+          `liar-results-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table:
+              "liar_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as LiarRoom;
 
-          setRoom(updated);
-
-          if (
-            updated.status === "waiting"
-          ) {
-            router.replace(
-              `/liar/room/${updated.code}`
+            setRoom(
+              updated
             );
+
+            if (
+              updated.status ===
+              "waiting"
+            ) {
+              router.replace(
+                `/liar/room/${updated.code}`
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -179,9 +218,77 @@ export default function LiarResultsPage() {
 
   const winner =
     useMemo(
-      () => players[0] ?? null,
+      () =>
+        players[0] ??
+        null,
       [players]
     );
+
+  useEffect(() => {
+    if (
+      loading ||
+      !winner ||
+      winnerSoundPlayed.current
+    ) {
+      return;
+    }
+
+    winnerSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "winner",
+            0.85
+          );
+        },
+        350
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    winner,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      players.length === 0 ||
+      scoreSoundPlayed.current
+    ) {
+      return;
+    }
+
+    scoreSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "score",
+            0.65
+          );
+        },
+        1200
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    players,
+  ]);
 
   async function handleRematch() {
     if (
@@ -196,6 +303,11 @@ export default function LiarResultsPage() {
     setError(null);
 
     try {
+      playSound(
+        "new-round",
+        0.75
+      );
+
       await rematchLiarGame(
         roomId
       );
@@ -208,7 +320,9 @@ export default function LiarResultsPage() {
     } catch (e: any) {
       setError(
         e?.message ??
-          "Could not start rematch."
+          (language === "hr"
+            ? "Nije moguće pokrenuti novu igru."
+            : "Could not start rematch.")
       );
 
       setRematching(false);
@@ -228,54 +342,260 @@ export default function LiarResultsPage() {
   }
 
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6 pb-8">
-      <div className="text-center pt-7">
-        <div className="text-6xl">
+    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-5 p-6 pb-8">
+      <motion.div
+        className="text-center pt-5"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.4,
+        }}
+      >
+        <motion.div
+          className="text-7xl"
+          initial={{
+            opacity: 0,
+            scale: 0,
+            rotate: -20,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            rotate: 0,
+          }}
+          transition={{
+            delay: 0.15,
+            type: "spring",
+            stiffness: 220,
+            damping: 13,
+          }}
+        >
           🏆
-        </div>
+        </motion.div>
 
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.25em] text-accent">
+        <motion.p
+          className="mt-4 text-xs font-black uppercase tracking-[0.25em] text-accent"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.35,
+          }}
+        >
           LIAR
-        </p>
+        </motion.p>
 
-        <h1 className="mt-2 text-3xl font-black">
+        <motion.h1
+          className="mt-2 text-3xl font-black"
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.45,
+          }}
+        >
           {language === "hr"
             ? "ZAVRŠNI REZULTATI"
             : "FINAL RESULTS"}
-        </h1>
-      </div>
+        </motion.h1>
+      </motion.div>
 
       {winner && (
-        <section className="rounded-3xl border border-yellow-400/25 bg-yellow-400/10 p-7 text-center">
+        <motion.section
+          className="relative overflow-hidden rounded-3xl border border-yellow-400/25 bg-yellow-400/10 p-7 text-center"
+          initial={{
+            opacity: 0,
+            scale: 0.8,
+            y: 30,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.55,
+            type: "spring",
+            stiffness: 170,
+            damping: 14,
+          }}
+        >
+          <motion.div
+            className="absolute left-5 top-5 text-2xl"
+            initial={{
+              opacity: 0,
+              scale: 0,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+            }}
+            transition={{
+              delay: 0.9,
+            }}
+          >
+            ✨
+          </motion.div>
+
+          <motion.div
+            className="absolute right-5 top-7 text-xl"
+            initial={{
+              opacity: 0,
+              scale: 0,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+            }}
+            transition={{
+              delay: 1,
+            }}
+          >
+            ✨
+          </motion.div>
+
           <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-300">
             {language === "hr"
               ? "POBJEDNIK"
               : "WINNER"}
           </p>
 
-          <div className="mt-4 text-6xl">
+          <motion.div
+            className="mt-4 text-6xl"
+            initial={{
+              scale: 0,
+            }}
+            animate={{
+              scale: 1,
+            }}
+            transition={{
+              delay: 0.75,
+              type: "spring",
+              stiffness: 230,
+              damping: 12,
+            }}
+          >
             {winner.avatar}
-          </div>
+          </motion.div>
 
-          <h2 className="mt-3 text-3xl font-black">
+          <motion.h2
+            className="mt-3 text-3xl font-black"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              delay: 0.9,
+            }}
+          >
             {winner.nickname}
-          </h2>
+          </motion.h2>
 
-          <p className="mt-2 text-xl font-black text-yellow-300">
+          <motion.p
+            className="mt-2 text-xl font-black text-yellow-300"
+            initial={{
+              opacity: 0,
+              scale: 0.8,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+            }}
+            transition={{
+              delay: 1.05,
+              type: "spring",
+            }}
+          >
             {winner.score} pts
-          </p>
-        </section>
+          </motion.p>
+        </motion.section>
       )}
 
-      <section className="card p-5">
+      <motion.section
+        className="card p-5"
+        initial={{
+          opacity: 0,
+          y: 25,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 1.05,
+        }}
+      >
+        <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-white/35">
+          {language === "hr"
+            ? "KONAČNI POREDAK"
+            : "FINAL STANDINGS"}
+        </p>
+
         <div className="flex flex-col gap-2">
           {players.map(
-            (player, index) => (
-              <div
-                key={player.id}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            (
+              player,
+              index
+            ) => (
+              <motion.div
+                key={
+                  player.id
+                }
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                  index === 0
+                    ? "border-yellow-400/25 bg-yellow-400/10"
+                    : "border-white/10 bg-black/20"
+                }`}
+                initial={{
+                  opacity: 0,
+                  x: -20,
+                }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                }}
+                transition={{
+                  delay:
+                    1.15 +
+                    index *
+                      0.08,
+                }}
               >
-                <span className="w-7 text-center font-black text-white/35">
+                <motion.span
+                  className="w-7 text-center font-black text-white/35"
+                  initial={{
+                    scale: 0.7,
+                  }}
+                  animate={{
+                    scale: 1,
+                  }}
+                  transition={{
+                    delay:
+                      1.2 +
+                      index *
+                        0.08,
+                    type:
+                      "spring",
+                  }}
+                >
                   {index === 0
                     ? "🥇"
                     : index === 1
@@ -283,7 +603,7 @@ export default function LiarResultsPage() {
                     : index === 2
                     ? "🥉"
                     : `${index + 1}.`}
-                </span>
+                </motion.span>
 
                 <span className="text-2xl">
                   {player.avatar}
@@ -291,16 +611,48 @@ export default function LiarResultsPage() {
 
                 <span className="min-w-0 flex-1 truncate font-bold">
                   {player.nickname}
+
+                  {player.id ===
+                    me?.id && (
+                    <span className="ml-1 text-xs font-normal text-white/30">
+                      {language ===
+                      "hr"
+                        ? "(ti)"
+                        : "(you)"}
+                    </span>
+                  )}
                 </span>
 
-                <span className="font-black text-accent">
+                <motion.span
+                  className={`font-black ${
+                    index === 0
+                      ? "text-yellow-300"
+                      : "text-accent"
+                  }`}
+                  initial={{
+                    opacity: 0,
+                    scale: 0.7,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                  }}
+                  transition={{
+                    delay:
+                      1.35 +
+                      index *
+                        0.08,
+                    type:
+                      "spring",
+                  }}
+                >
                   {player.score}
-                </span>
-              </div>
+                </motion.span>
+              </motion.div>
             )
           )}
         </div>
-      </section>
+      </motion.section>
 
       {error && (
         <p className="text-center text-sm text-accent">
@@ -308,17 +660,23 @@ export default function LiarResultsPage() {
         </p>
       )}
 
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="mt-auto flex flex-col gap-3 pt-3">
         {me?.is_host && (
           <Button
-            onClick={handleRematch}
-            disabled={rematching}
+            onClick={
+              handleRematch
+            }
+            disabled={
+              rematching
+            }
           >
             {rematching
-              ? language === "hr"
+              ? language ===
+                "hr"
                 ? "POKRETANJE..."
                 : "STARTING..."
-              : language === "hr"
+              : language ===
+                "hr"
               ? "🔄 IGRAJ PONOVNO"
               : "🔄 REMATCH"}
           </Button>
@@ -326,14 +684,16 @@ export default function LiarResultsPage() {
 
         <Button
           variant="secondary"
-          onClick={() =>
-            router.push("/")
-          }
+          onClick={() => {
+            playSound(
+              "click",
+              0.5
+            );
+
+            router.push("/");
+          }}
         >
-          🏠{" "}
-          {language === "hr"
-            ? "PARTY GAMES"
-            : "PARTY GAMES"}
+          🏠 PARTY GAMES
         </Button>
       </div>
     </main>

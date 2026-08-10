@@ -12,7 +12,11 @@ import {
   useRouter,
 } from "next/navigation";
 
+import { motion } from "motion/react";
+
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -29,54 +33,115 @@ import {
 export default function LiarVotingPage() {
   const params = useParams();
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language } =
+    useLanguage();
 
-  const rawRoomId = params.roomId;
+  const rawRoomId =
+    params.roomId;
+
   const roomId =
     Array.isArray(rawRoomId)
       ? rawRoomId[0]
       : rawRoomId;
 
   const [room, setRoom] =
-    useState<LiarRoom | null>(null);
+    useState<LiarRoom | null>(
+      null
+    );
 
   const [me, setMe] =
-    useState<LiarPlayer | null>(null);
+    useState<LiarPlayer | null>(
+      null
+    );
 
   const [players, setPlayers] =
     useState<LiarPlayer[]>([]);
 
-  const [voteState, setVoteState] =
-    useState<LiarVoteState | null>(null);
+  const [
+    voteState,
+    setVoteState,
+  ] =
+    useState<LiarVoteState | null>(
+      null
+    );
 
-  const [remaining, setRemaining] =
-    useState(0);
+  const [
+    remaining,
+    setRemaining,
+  ] = useState(0);
 
-  const [submitting, setSubmitting] =
-    useState<string | null>(null);
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState<string | null>(
+    null
+  );
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const [loading, setLoading] =
     useState(true);
 
-  const finishRequested = useRef(false);
+  const finishRequested =
+    useRef(false);
+
+  const lastTickSecond =
+    useRef<number | null>(
+      null
+    );
+
+  const revealSoundPlayed =
+    useRef(false);
+
+  function goToReveal(
+    targetRoomId: string
+  ) {
+    if (
+      !revealSoundPlayed.current
+    ) {
+      revealSoundPlayed.current =
+        true;
+
+      playSound(
+        "reveal",
+        0.8
+      );
+    }
+
+    router.replace(
+      `/liar/reveal/${targetRoomId}`
+    );
+  }
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     let cancelled = false;
 
     async function load() {
       try {
-        const [freshRoom, freshMe] =
+        const [
+          freshRoom,
+          freshMe,
+        ] =
           await Promise.all([
-            getLiarRoomById(roomId),
-            getMyLiarPlayerInRoom(roomId),
+            getLiarRoomById(
+              roomId
+            ),
+            getMyLiarPlayerInRoom(
+              roomId
+            ),
           ]);
 
-        if (!freshRoom || !freshMe) {
+        if (
+          !freshRoom ||
+          !freshMe
+        ) {
           throw new Error(
             language === "hr"
               ? "Nije moguće učitati glasanje."
@@ -84,45 +149,69 @@ export default function LiarVotingPage() {
           );
         }
 
-        const { data, error } = await supabase
-          .from("liar_players")
+        const {
+          data,
+          error:
+            playersError,
+        } = await supabase
+          .from(
+            "liar_players"
+          )
           .select("*")
-          .eq("room_id", roomId)
-          .order("joined_at", {
-            ascending: true,
-          });
+          .eq(
+            "room_id",
+            roomId
+          )
+          .order(
+            "joined_at",
+            {
+              ascending: true,
+            }
+          );
 
-        if (error) {
-          throw new Error(error.message);
+        if (playersError) {
+          throw new Error(
+            playersError.message
+          );
         }
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setRoom(freshRoom);
         setMe(freshMe);
+
         setPlayers(
           (data ?? []) as LiarPlayer[]
         );
 
         const state =
-          await getLiarVoteState(roomId);
+          await getLiarVoteState(
+            roomId
+          );
 
         if (!cancelled) {
-          setVoteState(state);
+          setVoteState(
+            state
+          );
         }
 
         if (
-          freshRoom.status === "reveal"
+          freshRoom.status ===
+          "reveal"
         ) {
-          router.replace(
-            `/liar/reveal/${roomId}`
+          goToReveal(
+            roomId
           );
         }
       } catch (e: any) {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load voting."
+              (language === "hr"
+                ? "Nije moguće učitati glasanje."
+                : "Could not load voting.")
           );
         }
       } finally {
@@ -144,36 +233,46 @@ export default function LiarVotingPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `liar-voting-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "liar_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as LiarRoom;
+    const channel =
+      supabase
+        .channel(
+          `liar-voting-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+            schema:
+              "public",
+            table:
+              "liar_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as LiarRoom;
 
-          setRoom(updated);
-
-          if (
-            updated.status === "reveal"
-          ) {
-            router.replace(
-              `/liar/reveal/${roomId}`
+            setRoom(
+              updated
             );
+
+            if (
+              updated.status ===
+              "reveal"
+            ) {
+              goToReveal(
+                roomId
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -189,7 +288,8 @@ export default function LiarVotingPage() {
     if (
       !roomId ||
       !room ||
-      room.status !== "voting"
+      room.status !==
+        "voting"
     ) {
       return;
     }
@@ -199,10 +299,14 @@ export default function LiarVotingPage() {
     async function refresh() {
       try {
         const state =
-          await getLiarVoteState(roomId);
+          await getLiarVoteState(
+            roomId
+          );
 
         if (!cancelled) {
-          setVoteState(state);
+          setVoteState(
+            state
+          );
         }
       } catch {}
     }
@@ -217,7 +321,10 @@ export default function LiarVotingPage() {
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+
+      window.clearInterval(
+        interval
+      );
     };
   }, [
     roomId,
@@ -227,13 +334,21 @@ export default function LiarVotingPage() {
   useEffect(() => {
     if (
       !room ||
-      room.status !== "voting" ||
+      room.status !==
+        "voting" ||
       !room.voting_started_at
     ) {
       return;
     }
 
-    finishRequested.current = false;
+    finishRequested.current =
+      false;
+
+    lastTickSecond.current =
+      null;
+
+    revealSoundPlayed.current =
+      false;
 
     const startedAt =
       room.voting_started_at;
@@ -243,23 +358,44 @@ export default function LiarVotingPage() {
 
     const id = room.id;
 
-    function tick() {
+    function updateTimer() {
       const end =
         new Date(
           startedAt
         ).getTime() +
-        votingTime * 1000;
+        votingTime *
+          1000;
 
       const seconds =
         Math.max(
           0,
           Math.ceil(
-            (end - Date.now()) /
+            (
+              end -
+              Date.now()
+            ) /
               1000
           )
         );
 
-      setRemaining(seconds);
+      setRemaining(
+        seconds
+      );
+
+      if (
+        seconds > 0 &&
+        seconds <= 5 &&
+        lastTickSecond.current !==
+          seconds
+      ) {
+        lastTickSecond.current =
+          seconds;
+
+        playSound(
+          "tick",
+          0.65
+        );
+      }
 
       if (
         seconds <= 0 &&
@@ -270,32 +406,62 @@ export default function LiarVotingPage() {
 
         void finishLiarVotingIfDue(
           id
-        ).catch(() => {
-          finishRequested.current =
-            false;
-        });
+        )
+          .then(
+            (
+              didFinish
+            ) => {
+              if (
+                didFinish
+              ) {
+                goToReveal(
+                  id
+                );
+              } else {
+                finishRequested.current =
+                  false;
+              }
+            }
+          )
+          .catch(
+            (e) => {
+              console.error(
+                "Could not finish Liar voting:",
+                e
+              );
+
+              finishRequested.current =
+                false;
+            }
+          );
       }
     }
 
-    tick();
+    updateTimer();
 
     const timer =
       window.setInterval(
-        tick,
+        updateTimer,
         250
       );
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
     };
-  }, [room]);
+  }, [
+    room,
+    router,
+  ]);
 
   const eligiblePlayers =
     useMemo(
       () =>
         players.filter(
           (player) =>
-            player.id !== me?.id
+            player.id !==
+            me?.id
         ),
       [
         players,
@@ -313,10 +479,18 @@ export default function LiarVotingPage() {
       return;
     }
 
-    setSubmitting(playerId);
+    setSubmitting(
+      playerId
+    );
+
     setError(null);
 
     try {
+      playSound(
+        "vote",
+        0.7
+      );
+
       await castLiarVote(
         roomId,
         playerId
@@ -327,7 +501,9 @@ export default function LiarVotingPage() {
           roomId
         );
 
-      setVoteState(state);
+      setVoteState(
+        state
+      );
     } catch (e: any) {
       setError(
         e?.message ??
@@ -336,7 +512,9 @@ export default function LiarVotingPage() {
             : "Vote was not saved.")
       );
     } finally {
-      setSubmitting(null);
+      setSubmitting(
+        null
+      );
     }
   }
 
@@ -344,7 +522,8 @@ export default function LiarVotingPage() {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
         <p className="text-white/50">
-          {language === "hr"
+          {language ===
+          "hr"
             ? "Učitavanje glasanja..."
             : "Loading voting..."}
         </p>
@@ -367,68 +546,139 @@ export default function LiarVotingPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-5 p-6">
-      <div className="text-center pt-4">
+      <motion.div
+        className="text-center pt-4"
+        initial={{
+          opacity: 0,
+          y: -15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
         <p className="text-xs uppercase tracking-[0.25em] text-white/35">
-          {language === "hr"
+          {language ===
+          "hr"
             ? "RUNDA"
             : "ROUND"}{" "}
-          {room?.current_round}
+          {
+            room?.current_round
+          }
           {" / "}
-          {room?.total_rounds}
+          {
+            room?.total_rounds
+          }
         </p>
 
         <h1 className="mt-2 text-3xl font-black">
           🗳️{" "}
-          {language === "hr"
+          {language ===
+          "hr"
             ? "TKO JE LIAR?"
             : "WHO IS THE LIAR?"}
         </h1>
 
-        <div
-          className={`mt-3 font-black ${
-            remaining <= 10
+        <motion.div
+          key={remaining}
+          initial={
+            remaining <= 5 &&
+            remaining > 0
+              ? {
+                  scale: 1.18,
+                }
+              : {
+                  scale: 1,
+                }
+          }
+          animate={{
+            scale: 1,
+          }}
+          transition={{
+            duration: 0.2,
+          }}
+          className={`mt-3 font-black tabular-nums ${
+            remaining <=
+            10
               ? "text-4xl text-accent"
               : "text-3xl"
           }`}
         >
           {remaining}s
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
+      <motion.div
+        className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center"
+        initial={{
+          opacity: 0,
+          scale: 0.96,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+        }}
+      >
         <p className="text-sm text-white/45">
-          {language === "hr"
+          {language ===
+          "hr"
             ? "Glasalo"
             : "Voted"}{" "}
           <span className="font-black text-white">
-            {voteState?.vote_count ?? 0}
+            {voteState
+              ?.vote_count ??
+              0}
             /
-            {voteState?.player_count ??
+            {voteState
+              ?.player_count ??
               players.length}
           </span>
         </p>
-      </div>
+      </motion.div>
 
       <section className="flex flex-col gap-3">
         {eligiblePlayers.map(
-          (player) => {
+          (
+            player,
+            index
+          ) => {
             const selected =
-              voteState?.my_vote_player_id ===
+              voteState
+                ?.my_vote_player_id ===
               player.id;
 
             return (
-              <button
-                key={player.id}
+              <motion.button
+                key={
+                  player.id
+                }
                 type="button"
                 disabled={
-                  submitting !== null
+                  submitting !==
+                  null
                 }
                 onClick={() =>
                   handleVote(
                     player.id
                   )
                 }
-                className={`flex items-center gap-4 rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] ${
+                initial={{
+                  opacity: 0,
+                  y: 15,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  delay:
+                    index *
+                    0.05,
+                }}
+                whileTap={{
+                  scale: 0.97,
+                }}
+                className={`flex items-center gap-4 rounded-2xl border px-4 py-4 text-left transition ${
                   selected
                     ? "border-accent bg-accent/15"
                     : "border-white/10 bg-panel2"
@@ -439,15 +689,20 @@ export default function LiarVotingPage() {
                 </span>
 
                 <span className="flex-1 font-black">
-                  {player.nickname}
+                  {
+                    player.nickname
+                  }
                 </span>
 
                 <span className="text-lg">
-                  {selected
+                  {submitting ===
+                  player.id
+                    ? "..."
+                    : selected
                     ? "✅"
                     : "›"}
                 </span>
-              </button>
+              </motion.button>
             );
           }
         )}
@@ -460,7 +715,14 @@ export default function LiarVotingPage() {
       )}
 
       <p className="mt-auto pb-4 text-center text-xs text-white/30">
-        {language === "hr"
+        {remaining <= 5 &&
+        remaining > 0
+          ? language ===
+            "hr"
+            ? "⚠️ Glasanje završava..."
+            : "⚠️ Voting is ending..."
+          : language ===
+            "hr"
           ? "Možeš promijeniti glas dok traje glasanje."
           : "You can change your vote while voting is open."}
       </p>

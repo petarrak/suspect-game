@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -14,6 +15,8 @@ import { motion } from "motion/react";
 
 import Button from "@/components/Button";
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -29,6 +32,7 @@ import {
 export default function LiarRevealPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -50,26 +54,47 @@ export default function LiarRevealPage() {
       null
     );
 
-  const [reveal, setReveal] =
+  const [
+    reveal,
+    setReveal,
+  ] =
     useState<LiarRevealData | null>(
       null
     );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [continuing, setContinuing] =
-    useState(false);
+  const [
+    continuing,
+    setContinuing,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null
+  );
+
+  const revealSoundPlayed =
+    useRef(false);
+
+  const outcomeSoundPlayed =
+    useRef(false);
+
+  const scoreSoundPlayed =
+    useRef(false);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    let cancelled = false;
+    let cancelled =
+      false;
 
     async function load() {
       try {
@@ -77,17 +102,27 @@ export default function LiarRevealPage() {
           freshRoom,
           freshMe,
           freshReveal,
-        ] = await Promise.all([
-          getLiarRoomById(roomId),
-          getMyLiarPlayerInRoom(
-            roomId
-          ),
-          getLiarReveal(roomId),
-        ]);
+        ] =
+          await Promise.all([
+            getLiarRoomById(
+              roomId
+            ),
+            getMyLiarPlayerInRoom(
+              roomId
+            ),
+            getLiarReveal(
+              roomId
+            ),
+          ]);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
-        if (!freshRoom || !freshMe) {
+        if (
+          !freshRoom ||
+          !freshMe
+        ) {
           throw new Error(
             language === "hr"
               ? "Nije moguće učitati rezultat."
@@ -95,19 +130,31 @@ export default function LiarRevealPage() {
           );
         }
 
-        setRoom(freshRoom);
-        setMe(freshMe);
-        setReveal(freshReveal);
+        setRoom(
+          freshRoom
+        );
+
+        setMe(
+          freshMe
+        );
+
+        setReveal(
+          freshReveal
+        );
       } catch (e: any) {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load reveal."
+              (language === "hr"
+                ? "Nije moguće učitati rezultat."
+                : "Could not load reveal.")
           );
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setLoading(
+            false
+          );
         }
       }
     }
@@ -123,44 +170,55 @@ export default function LiarRevealPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `liar-reveal-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "liar_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as LiarRoom;
+    const channel =
+      supabase
+        .channel(
+          `liar-reveal-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+            schema:
+              "public",
+            table:
+              "liar_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as LiarRoom;
 
-          setRoom(updated);
-
-          if (
-            updated.status === "word"
-          ) {
-            router.replace(
-              `/liar/word/${roomId}`
+            setRoom(
+              updated
             );
-          }
 
-          if (
-            updated.status === "ended"
-          ) {
-            router.replace(
-              `/liar/results/${roomId}`
-            );
+            if (
+              updated.status ===
+              "word"
+            ) {
+              router.replace(
+                `/liar/word/${roomId}`
+              );
+            }
+
+            if (
+              updated.status ===
+              "ended"
+            ) {
+              router.replace(
+                `/liar/results/${roomId}`
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -170,6 +228,95 @@ export default function LiarRevealPage() {
   }, [
     roomId,
     router,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      revealSoundPlayed.current
+    ) {
+      return;
+    }
+
+    revealSoundPlayed.current =
+      true;
+
+    playSound(
+      "reveal",
+      0.8
+    );
+  }, [
+    loading,
+    reveal,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      outcomeSoundPlayed.current
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        () => {
+          outcomeSoundPlayed.current =
+            true;
+
+          playSound(
+            reveal.liar_caught
+              ? "caught"
+              : "escaped",
+            0.85
+          );
+        },
+        1100
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    reveal,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !reveal ||
+      scoreSoundPlayed.current
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        () => {
+          scoreSoundPlayed.current =
+            true;
+
+          playSound(
+            "score",
+            0.65
+          );
+        },
+        1900
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    reveal,
   ]);
 
   async function handleContinue() {
@@ -190,11 +337,23 @@ export default function LiarRevealPage() {
           roomId
         );
 
-      if (next === "word") {
+      if (
+        next === "word"
+      ) {
+        playSound(
+          "new-round",
+          0.75
+        );
+
         router.replace(
           `/liar/word/${roomId}`
         );
       } else {
+        playSound(
+          "winner",
+          0.85
+        );
+
         router.replace(
           `/liar/results/${roomId}`
         );
@@ -202,10 +361,14 @@ export default function LiarRevealPage() {
     } catch (e: any) {
       setError(
         e?.message ??
-          "Could not continue."
+          (language === "hr"
+            ? "Nije moguće nastaviti."
+            : "Could not continue.")
       );
 
-      setContinuing(false);
+      setContinuing(
+        false
+      );
     }
   }
 
@@ -213,7 +376,8 @@ export default function LiarRevealPage() {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
         <p className="text-white/50">
-          {language === "hr"
+          {language ===
+          "hr"
             ? "Otkrivanje rezultata..."
             : "Revealing results..."}
         </p>
@@ -234,7 +398,11 @@ export default function LiarRevealPage() {
     );
   }
 
-  if (!reveal || !room || !me) {
+  if (
+    !reveal ||
+    !room ||
+    !me
+  ) {
     return null;
   }
 
@@ -249,23 +417,39 @@ export default function LiarRevealPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-5 p-6 pb-8">
-      <div className="text-center pt-4">
+      <motion.div
+        className="text-center pt-4"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
         <p className="text-xs uppercase tracking-[0.25em] text-white/35">
-          {language === "hr"
+          {language ===
+          "hr"
             ? "RUNDA"
             : "ROUND"}{" "}
-          {reveal.round_number}
+          {
+            reveal.round_number
+          }
           {" / "}
-          {room.total_rounds}
+          {
+            room.total_rounds
+          }
         </p>
 
         <h1 className="mt-2 text-3xl font-black">
           🤥{" "}
-          {language === "hr"
+          {language ===
+          "hr"
             ? "OTKRIVANJE"
             : "REVEAL"}
         </h1>
-      </div>
+      </motion.div>
 
       <motion.section
         className={`rounded-3xl border p-7 text-center ${
@@ -275,30 +459,95 @@ export default function LiarRevealPage() {
         }`}
         initial={{
           opacity: 0,
-          scale: 0.92,
+          scale: 0.85,
+          y: 25,
         }}
         animate={{
           opacity: 1,
           scale: 1,
+          y: 0,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 170,
+          damping: 15,
         }}
       >
-        <div className="text-6xl">
-          {reveal.liar_avatar}
-        </div>
+        <motion.div
+          className="text-6xl"
+          initial={{
+            scale: 0,
+            rotate: -15,
+          }}
+          animate={{
+            scale: 1,
+            rotate: 0,
+          }}
+          transition={{
+            delay: 0.2,
+            type: "spring",
+            stiffness: 220,
+          }}
+        >
+          {
+            reveal.liar_avatar
+          }
+        </motion.div>
 
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-white/35">
-          {language === "hr"
+        <motion.p
+          className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-white/35"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.35,
+          }}
+        >
+          {language ===
+          "hr"
             ? "LIAR JE BIO"
             : "THE LIAR WAS"}
-        </p>
+        </motion.p>
 
-        <h2 className="mt-2 text-3xl font-black">
-          {reveal.liar_nickname}
-        </h2>
+        <motion.h2
+          className="mt-2 text-3xl font-black"
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.45,
+          }}
+        >
+          {
+            reveal.liar_nickname
+          }
+        </motion.h2>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <motion.div
+          className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4"
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.6,
+          }}
+        >
           <p className="text-xs uppercase tracking-widest text-white/35">
-            {language === "hr"
+            {language ===
+            "hr"
               ? "TAJNA RIJEČ"
               : "SECRET WORD"}
           </p>
@@ -306,66 +555,121 @@ export default function LiarRevealPage() {
           <p className="mt-2 text-2xl font-black">
             {secretWord}
           </p>
-        </div>
+        </motion.div>
 
-        <p
+        <motion.p
           className={`mt-5 text-xl font-black ${
             reveal.liar_caught
               ? "text-green-300"
               : "text-accent"
           }`}
+          initial={{
+            opacity: 0,
+            scale: 0.75,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 1,
+            type: "spring",
+            stiffness: 200,
+          }}
         >
           {reveal.liar_caught
-            ? language === "hr"
+            ? language ===
+              "hr"
               ? "✅ LIAR JE UHVAĆEN!"
               : "✅ LIAR WAS CAUGHT!"
-            : language === "hr"
+            : language ===
+              "hr"
             ? "😈 LIAR JE POBJEGAO!"
             : "😈 LIAR ESCAPED!"}
-        </p>
+        </motion.p>
       </motion.section>
 
-      <section className="card p-5">
+      <motion.section
+        className="card p-5"
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 1.25,
+        }}
+      >
         <div className="flex items-center justify-between">
           <h3 className="font-black">
             🗳️{" "}
-            {language === "hr"
+            {language ===
+            "hr"
               ? "GLASOVI"
               : "VOTES"}
           </h3>
 
           <span className="text-xs text-white/35">
-            {reveal.correct_vote_count}{" "}
-            {language === "hr"
+            {
+              reveal.correct_vote_count
+            }{" "}
+            {language ===
+            "hr"
               ? "točno"
               : "correct"}
           </span>
         </div>
 
         <div className="mt-4 flex flex-col gap-2">
-          {reveal.votes.length === 0 ? (
+          {reveal.votes
+            .length === 0 ? (
             <p className="text-sm text-white/35">
-              {language === "hr"
+              {language ===
+              "hr"
                 ? "Nitko nije glasao."
                 : "Nobody voted."}
             </p>
           ) : (
             reveal.votes.map(
-              (vote) => (
-                <div
+              (
+                vote,
+                index
+              ) => (
+                <motion.div
                   key={
                     vote.voter_player_id
                   }
                   className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3"
+                  initial={{
+                    opacity: 0,
+                    x: -15,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    x: 0,
+                  }}
+                  transition={{
+                    delay:
+                      1.35 +
+                      index *
+                        0.08,
+                  }}
                 >
                   <span>
-                    {vote.correct
-                      ? "✅"
-                      : "❌"}
+                    {
+                      vote.correct
+                        ? "✅"
+                        : "❌"
+                    }
                   </span>
 
                   <span className="text-xl">
-                    {vote.voter_avatar}
+                    {
+                      vote.voter_avatar
+                    }
                   </span>
 
                   <div className="min-w-0 flex-1">
@@ -385,48 +689,103 @@ export default function LiarRevealPage() {
                       }
                     </p>
                   </div>
-                </div>
+                </motion.div>
               )
             )
           )}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="card p-5">
+      <motion.section
+        className="card p-5"
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 1.75,
+        }}
+      >
         <h3 className="font-black">
           🏆{" "}
-          {language === "hr"
+          {language ===
+          "hr"
             ? "BODOVI"
             : "SCORES"}
         </h3>
 
         <div className="mt-4 flex flex-col gap-2">
           {reveal.scores.map(
-            (player, index) => (
-              <div
-                key={player.id}
+            (
+              player,
+              index
+            ) => (
+              <motion.div
+                key={
+                  player.id
+                }
                 className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3"
+                initial={{
+                  opacity: 0,
+                  y: 10,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  delay:
+                    1.85 +
+                    index *
+                      0.08,
+                }}
               >
                 <span className="w-6 text-center font-black text-white/35">
                   {index + 1}.
                 </span>
 
                 <span className="text-2xl">
-                  {player.avatar}
+                  {
+                    player.avatar
+                  }
                 </span>
 
                 <span className="min-w-0 flex-1 truncate font-bold">
-                  {player.nickname}
+                  {
+                    player.nickname
+                  }
                 </span>
 
-                <span className="font-black text-accent">
-                  {player.score}
-                </span>
-              </div>
+                <motion.span
+                  className="font-black text-accent"
+                  initial={{
+                    scale: 0.8,
+                  }}
+                  animate={{
+                    scale: 1,
+                  }}
+                  transition={{
+                    delay:
+                      2 +
+                      index *
+                        0.08,
+                    type:
+                      "spring",
+                  }}
+                >
+                  {
+                    player.score
+                  }
+                </motion.span>
+              </motion.div>
             )
           )}
         </div>
-      </section>
+      </motion.section>
 
       {error && (
         <p className="text-center text-sm text-accent">
@@ -437,24 +796,32 @@ export default function LiarRevealPage() {
       <div className="mt-auto">
         {me.is_host ? (
           <Button
-            onClick={handleContinue}
-            disabled={continuing}
+            onClick={
+              handleContinue
+            }
+            disabled={
+              continuing
+            }
           >
             {continuing
-              ? language === "hr"
+              ? language ===
+                "hr"
                 ? "UČITAVANJE..."
                 : "LOADING..."
               : finalRound
-              ? language === "hr"
+              ? language ===
+                "hr"
                 ? "🏆 ZAVRŠNI REZULTATI"
                 : "🏆 FINAL RESULTS"
-              : language === "hr"
+              : language ===
+                "hr"
               ? "➡️ SLJEDEĆA RUNDA"
               : "➡️ NEXT ROUND"}
           </Button>
         ) : (
           <p className="text-center text-sm text-white/35">
-            {language === "hr"
+            {language ===
+            "hr"
               ? "Čekamo hosta..."
               : "Waiting for host..."}
           </p>

@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -14,6 +15,8 @@ import { motion } from "motion/react";
 
 import Button from "@/components/Button";
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -29,6 +32,7 @@ import {
 export default function WhoWouldQuestionPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -40,34 +44,78 @@ export default function WhoWouldQuestionPage() {
       ? rawRoomId[0]
       : rawRoomId;
 
-  const [room, setRoom] =
+  const [
+    room,
+    setRoom,
+  ] =
     useState<WhoWouldRoom | null>(
       null
     );
 
-  const [me, setMe] =
+  const [
+    me,
+    setMe,
+  ] =
     useState<WhoWouldPlayer | null>(
       null
     );
 
-  const [question, setQuestion] =
+  const [
+    question,
+    setQuestion,
+  ] =
     useState<WhoWouldQuestion | null>(
       null
     );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [opening, setOpening] =
-    useState(false);
+  const [
+    opening,
+    setOpening,
+  ] = useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
 
+  const questionSoundPlayed =
+    useRef(false);
+
+  const voteSoundPlayed =
+    useRef(false);
+
+  function goToVoting(
+    targetRoomId: string
+  ) {
+    if (
+      !voteSoundPlayed.current
+    ) {
+      voteSoundPlayed.current =
+        true;
+
+      playSound(
+        "vote",
+        0.75
+      );
+    }
+
+    router.replace(
+      `/who-would/voting/${targetRoomId}`
+    );
+  }
+
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -77,21 +125,29 @@ export default function WhoWouldQuestionPage() {
           freshRoom,
           freshMe,
           freshQuestion,
-        ] = await Promise.all([
-          getWhoWouldRoomById(
-            roomId
-          ),
-          getMyWhoWouldPlayerInRoom(
-            roomId
-          ),
-          getWhoWouldQuestion(
-            roomId
-          ),
-        ]);
+        ] =
+          await Promise.all([
+            getWhoWouldRoomById(
+              roomId
+            ),
 
-        if (cancelled) return;
+            getMyWhoWouldPlayerInRoom(
+              roomId
+            ),
 
-        if (!freshRoom || !freshMe) {
+            getWhoWouldQuestion(
+              roomId
+            ),
+          ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          !freshRoom ||
+          !freshMe
+        ) {
           throw new Error(
             language === "hr"
               ? "Nije moguće učitati pitanje."
@@ -99,22 +155,30 @@ export default function WhoWouldQuestionPage() {
           );
         }
 
-        setRoom(freshRoom);
-        setMe(freshMe);
+        setRoom(
+          freshRoom
+        );
+
+        setMe(
+          freshMe
+        );
+
         setQuestion(
           freshQuestion
         );
 
         if (
-          freshRoom.status === "voting"
+          freshRoom.status ===
+          "voting"
         ) {
-          router.replace(
-            `/who-would/voting/${roomId}`
+          goToVoting(
+            roomId
           );
         }
 
         if (
-          freshRoom.status === "reveal"
+          freshRoom.status ===
+          "reveal"
         ) {
           router.replace(
             `/who-would/reveal/${roomId}`
@@ -124,12 +188,16 @@ export default function WhoWouldQuestionPage() {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load question."
+              (language === "hr"
+                ? "Nije moguće učitati pitanje."
+                : "Could not load question.")
           );
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setLoading(
+            false
+          );
         }
       }
     }
@@ -146,44 +214,88 @@ export default function WhoWouldQuestionPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (
+      loading ||
+      !question ||
+      questionSoundPlayed.current
+    ) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `who-would-question-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "who_would_rooms",
-          filter: `id=eq.${roomId}`,
+    questionSoundPlayed.current =
+      true;
+
+    const timer =
+      window.setTimeout(
+        () => {
+          playSound(
+            "reveal",
+            0.65
+          );
         },
-        (payload) => {
-          const updated =
-            payload.new as WhoWouldRoom;
+        250
+      );
 
-          setRoom(updated);
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    loading,
+    question,
+  ]);
 
-          if (
-            updated.status === "voting"
-          ) {
-            router.replace(
-              `/who-would/voting/${roomId}`
+  useEffect(() => {
+    if (!roomId) {
+      return;
+    }
+
+    const channel =
+      supabase
+        .channel(
+          `who-would-question-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+            schema:
+              "public",
+            table:
+              "who_would_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as WhoWouldRoom;
+
+            setRoom(
+              updated
             );
-          }
 
-          if (
-            updated.status === "reveal"
-          ) {
-            router.replace(
-              `/who-would/reveal/${roomId}`
-            );
+            if (
+              updated.status ===
+              "voting"
+            ) {
+              goToVoting(
+                roomId
+              );
+            }
+
+            if (
+              updated.status ===
+              "reveal"
+            ) {
+              router.replace(
+                `/who-would/reveal/${roomId}`
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -208,6 +320,14 @@ export default function WhoWouldQuestionPage() {
     setError(null);
 
     try {
+      playSound(
+        "vote",
+        0.75
+      );
+
+      voteSoundPlayed.current =
+        true;
+
       await openWhoWouldVoting(
         roomId
       );
@@ -216,23 +336,57 @@ export default function WhoWouldQuestionPage() {
         `/who-would/voting/${roomId}`
       );
     } catch (e: any) {
+      voteSoundPlayed.current =
+        false;
+
       setError(
         e?.message ??
-          "Could not open voting."
+          (language === "hr"
+            ? "Nije moguće otvoriti glasanje."
+            : "Could not open voting.")
       );
 
-      setOpening(false);
+      setOpening(
+        false
+      );
     }
   }
 
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-white/50">
-          {language === "hr"
-            ? "Učitavanje pitanja..."
-            : "Loading question..."}
-        </p>
+        <motion.div
+          className="text-center"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+        >
+          <motion.div
+            className="text-6xl"
+            animate={{
+              scale: [
+                1,
+                1.08,
+                1,
+              ],
+            }}
+            transition={{
+              duration: 1.6,
+              repeat: Infinity,
+            }}
+          >
+            🤔
+          </motion.div>
+
+          <p className="mt-4 text-white/50">
+            {language === "hr"
+              ? "Učitavanje pitanja..."
+              : "Loading question..."}
+          </p>
+        </motion.div>
       </main>
     );
   }
@@ -265,45 +419,162 @@ export default function WhoWouldQuestionPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-5">
-        <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
+      <motion.div
+        className="text-center pt-5"
+        initial={{
+          opacity: 0,
+          y: -20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
+        <motion.p
+          className="text-xs font-black uppercase tracking-[0.25em] text-accent"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.1,
+          }}
+        >
           😂 WHO WOULD?
-        </p>
+        </motion.p>
 
-        <p className="mt-2 text-sm text-white/35">
+        <motion.p
+          className="mt-2 text-sm text-white/35"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.2,
+          }}
+        >
           {language === "hr"
             ? "RUNDA"
             : "ROUND"}{" "}
           {question.round_number}
           {" / "}
           {question.total_rounds}
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
 
       <motion.section
-        className="mt-auto mb-auto rounded-3xl border border-accent/30 bg-accent/10 p-8 text-center shadow-2xl shadow-accent/10"
+        className="relative mt-auto mb-auto overflow-hidden rounded-3xl border border-accent/30 bg-accent/10 p-8 text-center shadow-2xl shadow-accent/10"
         initial={{
           opacity: 0,
-          scale: 0.92,
+          scale: 0.75,
+          y: 30,
         }}
         animate={{
           opacity: 1,
           scale: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.2,
+          type: "spring",
+          stiffness: 160,
+          damping: 14,
         }}
       >
-        <div className="text-6xl">
-          🤔
-        </div>
+        <motion.div
+          className="absolute left-5 top-5 text-xl"
+          initial={{
+            opacity: 0,
+            scale: 0,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.65,
+          }}
+        >
+          ✨
+        </motion.div>
 
-        <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-white/35">
+        <motion.div
+          className="absolute right-5 top-6 text-xl"
+          initial={{
+            opacity: 0,
+            scale: 0,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.75,
+          }}
+        >
+          ✨
+        </motion.div>
+
+        <motion.div
+          className="text-6xl"
+          initial={{
+            scale: 0,
+            rotate: -15,
+          }}
+          animate={{
+            scale: 1,
+            rotate: 0,
+          }}
+          transition={{
+            delay: 0.35,
+            type: "spring",
+            stiffness: 220,
+            damping: 12,
+          }}
+        >
+          🤔
+        </motion.div>
+
+        <motion.p
+          className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-white/35"
+          initial={{
+            opacity: 0,
+          }}
+          animate={{
+            opacity: 1,
+          }}
+          transition={{
+            delay: 0.5,
+          }}
+        >
           {language === "hr"
             ? "TKO BI..."
             : "WHO WOULD..."}
-        </p>
+        </motion.p>
 
-        <h1 className="mt-4 text-3xl font-black leading-tight">
+        <motion.h1
+          className="mt-4 text-3xl font-black leading-tight"
+          initial={{
+            opacity: 0,
+            y: 15,
+            scale: 0.95,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+          }}
+          transition={{
+            delay: 0.65,
+            type: "spring",
+          }}
+        >
           {text}
-        </h1>
+        </motion.h1>
       </motion.section>
 
       {error && (
@@ -312,11 +583,28 @@ export default function WhoWouldQuestionPage() {
         </p>
       )}
 
-      <div className="pb-4">
+      <motion.div
+        className="pb-4"
+        initial={{
+          opacity: 0,
+          y: 15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.85,
+        }}
+      >
         {me.is_host ? (
           <Button
-            onClick={handleOpenVoting}
-            disabled={opening}
+            onClick={
+              handleOpenVoting
+            }
+            disabled={
+              opening
+            }
           >
             {opening
               ? language === "hr"
@@ -327,13 +615,23 @@ export default function WhoWouldQuestionPage() {
               : "🗳️ OPEN VOTING"}
           </Button>
         ) : (
-          <p className="text-center text-sm text-white/35">
-            {language === "hr"
-              ? "Čekamo hosta da otvori glasanje..."
-              : "Waiting for the host to open voting..."}
-          </p>
+          <motion.div
+            className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center"
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+          >
+            <p className="text-sm text-white/35">
+              {language === "hr"
+                ? "Čekamo hosta da otvori glasanje..."
+                : "Waiting for the host to open voting..."}
+            </p>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </main>
   );
 }

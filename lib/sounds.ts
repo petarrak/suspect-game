@@ -1,104 +1,123 @@
-"use client";
-
 export type SoundName =
   | "click"
   | "join"
   | "start"
   | "vote"
-  | "tick"
   | "reveal"
-  | "caught"
-  | "escaped"
-  | "score"
   | "winner"
-  | "new-round";
+  | "tick"
+  | "new-round"
+  | "score"
+  | "escaped"
+  | "caught"
+  | "combat";
 
-const audioCache: Partial<
-  Record<SoundName, HTMLAudioElement>
-> = {};
+const SOUND_FILES: Record<SoundName, string> = {
+  click: "/sounds/click.mp3",
+  join: "/sounds/join.mp3",
+  start: "/sounds/start.mp3",
+  vote: "/sounds/vote.mp3",
+  reveal: "/sounds/reveal.mp3",
+  winner: "/sounds/winner.mp3",
+  tick: "/sounds/tick.mp3",
+  "new-round": "/sounds/new-round.mp3",
+  score: "/sounds/score.mp3",
+  escaped: "/sounds/escaped.mp3",
+  caught: "/sounds/caught.mp3",
+  combat: "/sounds/combat.mp3",
+};
+
+const audioCache = new Map<
+  SoundName,
+  HTMLAudioElement
+>();
 
 function getAudio(
-  name: SoundName
+  sound: SoundName
 ): HTMLAudioElement | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  if (!audioCache[name]) {
-    const audio = new Audio(
-      `/sounds/${name}.mp3`
-    );
+  const existing =
+    audioCache.get(sound);
 
-    audio.preload = "auto";
-
-    audioCache[name] = audio;
+  if (existing) {
+    return existing;
   }
 
-  return audioCache[name] ?? null;
+  const audio = new Audio(
+    SOUND_FILES[sound]
+  );
+
+  audio.preload = "auto";
+
+  audioCache.set(
+    sound,
+    audio
+  );
+
+  return audio;
 }
 
 export function playSound(
-  name: SoundName
+  sound: SoundName,
+  volume = 0.7
 ) {
-  const audio = getAudio(name);
+  try {
+    const audio =
+      getAudio(sound);
 
-  if (!audio) return;
-
-  audio.pause();
-  audio.currentTime = 0;
-
-  if (name === "click") {
-    audio.volume = 0.55;
-  } else if (name === "join") {
-    audio.volume = 0.65;
-  } else if (name === "start") {
-    audio.volume = 0.75;
-  } else if (name === "tick") {
-    audio.volume = 0.45;
-  } else if (name === "vote") {
-    audio.volume = 0.7;
-  } else if (name === "reveal") {
-    audio.volume = 0.8;
-  } else if (name === "caught") {
-    audio.volume = 0.8;
-  } else if (name === "escaped") {
-    audio.volume = 0.75;
-  } else if (name === "score") {
-    audio.volume = 0.7;
-  } else if (name === "winner") {
-    audio.volume = 0.85;
-  } else if (name === "new-round") {
-    audio.volume = 0.7;
-  }
-
-  audio.play().catch((error) => {
-    console.error(
-      `Sound "${name}" failed:`,
-      error
-    );
-  });
-}
-
-export function stopSound(
-  name: SoundName
-) {
-  const audio = getAudio(name);
-
-  if (!audio) return;
-
-  audio.pause();
-  audio.currentTime = 0;
-}
-
-export function stopAllSounds() {
-  (
-    Object.keys(audioCache) as SoundName[]
-  ).forEach((name) => {
-    const audio = audioCache[name];
-
-    if (!audio) return;
+    if (!audio) {
+      return;
+    }
 
     audio.pause();
     audio.currentTime = 0;
+
+    audio.volume = Math.max(
+      0,
+      Math.min(1, volume)
+    );
+
+    void audio
+      .play()
+      .catch(() => {
+        // Browser may block autoplay
+        // until user interaction.
+      });
+  } catch (error) {
+    console.warn(
+      `Could not play sound "${sound}"`,
+      error
+    );
+  }
+}
+
+export function stopSound(
+  sound: SoundName
+) {
+  const audio =
+    audioCache.get(sound);
+
+  if (!audio) {
+    return;
+  }
+
+  audio.pause();
+  audio.currentTime = 0;
+}
+
+export function preloadSounds() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  (
+    Object.keys(
+      SOUND_FILES
+    ) as SoundName[]
+  ).forEach((sound) => {
+    getAudio(sound);
   });
 }

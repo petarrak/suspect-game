@@ -15,6 +15,8 @@ import {
 import { motion } from "motion/react";
 
 import { useLanguage } from "@/components/LanguageProvider";
+
+import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -28,6 +30,7 @@ import {
 export default function MafiaDiscussionPage() {
   const params = useParams();
   const router = useRouter();
+
   const { language } =
     useLanguage();
 
@@ -49,40 +52,80 @@ export default function MafiaDiscussionPage() {
       null
     );
 
-  const [remaining, setRemaining] =
-    useState(0);
+  const [
+    remaining,
+    setRemaining,
+  ] = useState(0);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null
+  );
 
   const finishRequested =
     useRef(false);
 
-  useEffect(() => {
-    if (!roomId) return;
+  const lastTickSecond =
+    useRef<number | null>(
+      null
+    );
 
-    let cancelled = false;
+  const voteSoundPlayed =
+    useRef(false);
+
+  function goToVoting(
+    targetRoomId: string
+  ) {
+    if (
+      !voteSoundPlayed.current
+    ) {
+      voteSoundPlayed.current =
+        true;
+
+      playSound(
+        "vote",
+        0.75
+      );
+    }
+
+    router.replace(
+      `/mafia/voting/${targetRoomId}`
+    );
+  }
+
+  useEffect(() => {
+    if (!roomId) {
+      return;
+    }
+
+    let cancelled =
+      false;
 
     async function load() {
       try {
         const [
           freshRoom,
           freshMe,
-        ] = await Promise.all([
-          getMafiaRoomById(
-            roomId
-          ),
-          getMyMafiaPlayerInRoom(
-            roomId
-          ),
-        ]);
+        ] =
+          await Promise.all([
+            getMafiaRoomById(
+              roomId
+            ),
+            getMyMafiaPlayerInRoom(
+              roomId
+            ),
+          ]);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         if (
           !freshRoom ||
@@ -95,21 +138,29 @@ export default function MafiaDiscussionPage() {
           );
         }
 
-        setRoom(freshRoom);
-        setMe(freshMe);
+        setRoom(
+          freshRoom
+        );
+
+        setMe(
+          freshMe
+        );
 
         if (
-          freshRoom.status === "voting"
+          freshRoom.status ===
+          "voting"
         ) {
-          router.replace(
-            `/mafia/voting/${roomId}`
+          goToVoting(
+            roomId
           );
         }
       } catch (e: any) {
         if (!cancelled) {
           setError(
             e?.message ??
-              "Could not load discussion."
+              (language === "hr"
+                ? "Nije moguće učitati raspravu."
+                : "Could not load discussion.")
           );
         }
       } finally {
@@ -131,36 +182,46 @@ export default function MafiaDiscussionPage() {
   ]);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `mafia-discussion-room-${roomId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "mafia_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updated =
-            payload.new as MafiaRoom;
+    const channel =
+      supabase
+        .channel(
+          `mafia-discussion-room-${roomId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+            schema:
+              "public",
+            table:
+              "mafia_rooms",
+            filter:
+              `id=eq.${roomId}`,
+          },
+          (payload) => {
+            const updated =
+              payload.new as MafiaRoom;
 
-          setRoom(updated);
-
-          if (
-            updated.status === "voting"
-          ) {
-            router.replace(
-              `/mafia/voting/${roomId}`
+            setRoom(
+              updated
             );
+
+            if (
+              updated.status ===
+              "voting"
+            ) {
+              goToVoting(
+                roomId
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
     return () => {
       void supabase.removeChannel(
@@ -175,13 +236,21 @@ export default function MafiaDiscussionPage() {
   useEffect(() => {
     if (
       !room ||
-      room.status !== "discussion" ||
+      room.status !==
+        "discussion" ||
       !room.discussion_started_at
     ) {
       return;
     }
 
-    finishRequested.current = false;
+    finishRequested.current =
+      false;
+
+    lastTickSecond.current =
+      null;
+
+    voteSoundPlayed.current =
+      false;
 
     const currentRoomId =
       room.id;
@@ -192,18 +261,22 @@ export default function MafiaDiscussionPage() {
     const discussionTime =
       room.discussion_time;
 
-    function tick() {
+    function updateCountdown() {
       const endsAt =
         new Date(
           startedAt
         ).getTime() +
-        discussionTime * 1000;
+        discussionTime *
+          1000;
 
       const secondsLeft =
         Math.max(
           0,
           Math.ceil(
-            (endsAt - Date.now()) /
+            (
+              endsAt -
+              Date.now()
+            ) /
               1000
           )
         );
@@ -211,6 +284,21 @@ export default function MafiaDiscussionPage() {
       setRemaining(
         secondsLeft
       );
+
+      if (
+        secondsLeft > 0 &&
+        secondsLeft <= 5 &&
+        lastTickSecond.current !==
+          secondsLeft
+      ) {
+        lastTickSecond.current =
+          secondsLeft;
+
+        playSound(
+          "tick",
+          0.65
+        );
+      }
 
       if (
         secondsLeft <= 0 &&
@@ -222,33 +310,41 @@ export default function MafiaDiscussionPage() {
         void finishMafiaDiscussionIfDue(
           currentRoomId
         )
-          .then((didFinish) => {
-            if (didFinish) {
-              router.replace(
-                `/mafia/voting/${currentRoomId}`
+          .then(
+            (
+              didFinish
+            ) => {
+              if (
+                didFinish
+              ) {
+                goToVoting(
+                  currentRoomId
+                );
+              } else {
+                finishRequested.current =
+                  false;
+              }
+            }
+          )
+          .catch(
+            (e) => {
+              console.error(
+                "Could not finish Mafia discussion:",
+                e
               );
-            } else {
+
               finishRequested.current =
                 false;
             }
-          })
-          .catch((e) => {
-            console.error(
-              "Could not finish Mafia discussion:",
-              e
-            );
-
-            finishRequested.current =
-              false;
-          });
+          );
       }
     }
 
-    tick();
+    updateCountdown();
 
     const timer =
       window.setInterval(
-        tick,
+        updateCountdown,
         250
       );
 
@@ -266,7 +362,8 @@ export default function MafiaDiscussionPage() {
     useMemo(() => {
       if (
         !room ||
-        room.discussion_time <= 0
+        room.discussion_time <=
+          0
       ) {
         return 0;
       }
@@ -306,7 +403,9 @@ export default function MafiaDiscussionPage() {
       <main className="min-h-screen flex items-center justify-center p-6 text-center">
         <p className="text-accent">
           {error ??
-            "Discussion unavailable."}
+            (language === "hr"
+              ? "Rasprava nije dostupna."
+              : "Discussion unavailable.")}
         </p>
       </main>
     );
@@ -314,7 +413,17 @@ export default function MafiaDiscussionPage() {
 
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-6 p-6">
-      <div className="text-center pt-5">
+      <motion.div
+        className="text-center pt-5"
+        initial={{
+          opacity: 0,
+          y: -15,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+      >
         <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
           ☀️{" "}
           {language === "hr"
@@ -329,7 +438,7 @@ export default function MafiaDiscussionPage() {
             ? "RASPRAVA"
             : "DISCUSSION"}
         </h1>
-      </div>
+      </motion.div>
 
       <motion.section
         className="mt-auto mb-auto flex flex-col items-center text-center"
@@ -342,7 +451,24 @@ export default function MafiaDiscussionPage() {
           scale: 1,
         }}
       >
-        <div
+        <motion.div
+          key={remaining}
+          initial={
+            remaining <= 5 &&
+            remaining > 0
+              ? {
+                  scale: 1.18,
+                }
+              : {
+                  scale: 1,
+                }
+          }
+          animate={{
+            scale: 1,
+          }}
+          transition={{
+            duration: 0.2,
+          }}
           className={`font-black tabular-nums ${
             remaining <= 10
               ? "text-8xl text-accent"
@@ -350,7 +476,7 @@ export default function MafiaDiscussionPage() {
           }`}
         >
           {remaining}
-        </div>
+        </motion.div>
 
         <p className="mt-3 text-sm uppercase tracking-[0.2em] text-white/35">
           {language === "hr"
@@ -359,15 +485,32 @@ export default function MafiaDiscussionPage() {
         </p>
 
         <div className="mt-7 h-3 w-full overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-accent transition-[width] duration-300"
-            style={{
-              width: `${progress}%`,
+          <motion.div
+            className="h-full rounded-full bg-accent"
+            animate={{
+              width:
+                `${progress}%`,
+            }}
+            transition={{
+              duration: 0.25,
             }}
           />
         </div>
 
-        <div className="mt-8 rounded-3xl border border-white/10 bg-panel2 p-6 text-left">
+        <motion.div
+          className="mt-8 rounded-3xl border border-white/10 bg-panel2 p-6 text-left"
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.2,
+          }}
+        >
           <p className="font-black">
             🎭{" "}
             {language === "hr"
@@ -380,14 +523,30 @@ export default function MafiaDiscussionPage() {
               ? "Razgovarajte o tome što se dogodilo. Mafija mora lagati, a Civili pokušavaju pronaći sumnjive igrače."
               : "Discuss what happened. The Mafia must lie while the Civilians try to find suspicious players."}
           </p>
-        </div>
+        </motion.div>
       </motion.section>
 
-      <p className="pb-5 text-center text-sm text-white/35">
-        {language === "hr"
+      <motion.p
+        className="pb-5 text-center text-sm text-white/35"
+        initial={{
+          opacity: 0,
+        }}
+        animate={{
+          opacity: 1,
+        }}
+        transition={{
+          delay: 0.3,
+        }}
+      >
+        {remaining <= 5 &&
+        remaining > 0
+          ? language === "hr"
+            ? "⚠️ Glasanje počinje za nekoliko sekundi..."
+            : "⚠️ Voting starts in a few seconds..."
+          : language === "hr"
           ? "Kad timer završi, glasanje počinje automatski."
           : "Voting starts automatically when the timer ends."}
-      </p>
+      </motion.p>
     </main>
   );
 }

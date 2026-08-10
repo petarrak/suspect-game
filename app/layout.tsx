@@ -1,4 +1,8 @@
-import type { Metadata, Viewport } from "next";
+import type {
+  Metadata,
+  Viewport,
+} from "next";
+
 import "./globals.css";
 
 import { LanguageProvider } from "@/components/LanguageProvider";
@@ -15,14 +19,18 @@ export const metadata: Metadata = {
   description:
     "Multiplayer party games for friends.",
 
-  applicationName: "Party Games",
+  applicationName:
+    "Party Games",
 
-  manifest: "/manifest.webmanifest",
+  manifest:
+    "/manifest.webmanifest",
 
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Party Games",
+    statusBarStyle:
+      "black-translucent",
+    title:
+      "Party Games",
   },
 
   formatDetection: {
@@ -70,8 +78,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html
+      lang="en"
+      className="bg-background"
+    >
+      <body className="min-h-screen bg-background text-white antialiased">
         <LanguageProvider>
           <ReconnectGuard />
 

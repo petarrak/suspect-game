@@ -124,10 +124,14 @@ function getSessionInfo(
 export default function GameSessionControls() {
   const pathname = usePathname();
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language } =
+    useLanguage();
 
   const session = useMemo(
-    () => getSessionInfo(pathname ?? ""),
+    () =>
+      getSessionInfo(
+        pathname ?? ""
+      ),
     [pathname]
   );
 
@@ -135,7 +139,9 @@ export default function GameSessionControls() {
     useState(false);
 
   const [roomCode, setRoomCode] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const [open, setOpen] =
     useState(false);
@@ -144,26 +150,31 @@ export default function GameSessionControls() {
     useState(false);
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
     setIsHost(false);
     setRoomCode(null);
     setOpen(false);
     setError(null);
+    setReturning(false);
 
     if (!session) {
       return;
     }
 
-    const activeSession = session;
+    const activeSession =
+      session;
 
     let cancelled = false;
 
     async function load() {
       const {
         data: authData,
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
       const userId =
         authData.user?.id;
@@ -179,7 +190,9 @@ export default function GameSessionControls() {
         data: room,
         error: roomError,
       } = await supabase
-        .from(activeSession.roomTable)
+        .from(
+          activeSession.roomTable
+        )
         .select(
           "id, code, status, host_user_id"
         )
@@ -202,12 +215,16 @@ export default function GameSessionControls() {
       );
 
       setIsHost(
-        room.host_user_id === userId
+        room.host_user_id ===
+          userId
       );
 
       if (
-        room.status === "waiting"
+        room.status ===
+        "waiting"
       ) {
+        setReturning(false);
+
         router.replace(
           `${activeSession.lobbyPrefix}/${room.code}`
         );
@@ -249,6 +266,8 @@ export default function GameSessionControls() {
               "waiting" &&
             updated.code
           ) {
+            setReturning(false);
+
             router.replace(
               `${activeSession.lobbyPrefix}/${updated.code}`
             );
@@ -278,7 +297,8 @@ export default function GameSessionControls() {
       return;
     }
 
-    const activeSession = session;
+    const activeSession =
+      session;
 
     const confirmed =
       window.confirm(
@@ -316,6 +336,8 @@ export default function GameSessionControls() {
         (data as string | null) ??
         roomCode;
 
+      setReturning(false);
+
       if (code) {
         router.replace(
           `${activeSession.lobbyPrefix}/${code}`
@@ -342,7 +364,6 @@ export default function GameSessionControls() {
 
   return (
     <>
-      {/* HOST BUTTON */}
       <button
         type="button"
         onClick={() =>
@@ -355,7 +376,6 @@ export default function GameSessionControls() {
         👑 HOST
       </button>
 
-      {/* HOST MENU */}
       {open && (
         <div className="fixed right-4 top-16 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
@@ -385,7 +405,6 @@ export default function GameSessionControls() {
             </button>
           </div>
 
-          {/* RETURN ALL TO LOBBY */}
           <button
             type="button"
             onClick={

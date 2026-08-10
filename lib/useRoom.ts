@@ -714,7 +714,20 @@ export function useRoomByIdRealtime(roomId: string) {
             schema: "public",
             table: "players",
           },
-          () => refetchPlayers(roomData.id)
+          (payload) => {
+            const deletedId =
+              (payload.old as { id?: string } | null)?.id;
+
+            if (deletedId) {
+              setPlayers((current) =>
+                current.filter(
+                  (player) => player.id !== deletedId
+                )
+              );
+            }
+
+            void refetchPlayers(roomData.id);
+          }
         )
         .subscribe();
     }

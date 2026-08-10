@@ -11,395 +11,427 @@ import {
   useRouter,
 } from "next/navigation";
 
-import { playSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/components/LanguageProvider";
 
-import {
-  endGameToLobby,
-  getMyPlayerInRoom,
-  getRoomById,
-  leaveGame,
-} from "@/lib/useRoom";
+type GameType =
+  | "suspect"
+  | "liar"
+  | "mafia"
+  | "who-would";
 
-import type {
-  Player,
-  Room,
-} from "@/lib/types";
+type SessionInfo = {
+  game: GameType;
+  roomId: string;
+  roomTable: string;
+  playerTable: string;
+  lobbyPrefix: string;
+};
 
-const GAME_ROUTES = new Set([
-  "question",
-  "answer",
-  "voting",
-  "reveal",
-]);
+function getSessionInfo(
+  pathname: string
+): SessionInfo | null {
+  const parts = pathname
+    .split("/")
+    .filter(Boolean);
+
+  // SUSPECT
+  if (
+    parts.length === 2 &&
+    [
+      "question",
+      "answer",
+      "voting",
+      "reveal",
+    ].includes(parts[0])
+  ) {
+    return {
+      game: "suspect",
+      roomId: parts[1],
+      roomTable: "rooms",
+      playerTable: "players",
+      lobbyPrefix: "/room",
+    };
+  }
+
+  // LIAR
+  if (
+    parts.length === 3 &&
+    parts[0] === "liar" &&
+    [
+      "word",
+      "discussion",
+      "voting",
+      "reveal",
+      "results",
+    ].includes(parts[1])
+  ) {
+    return {
+      game: "liar",
+      roomId: parts[2],
+      roomTable: "liar_rooms",
+      playerTable: "liar_players",
+      lobbyPrefix: "/liar/room",
+    };
+  }
+
+  // MAFIA
+  if (
+    parts.length === 3 &&
+    parts[0] === "mafia" &&
+    [
+      "role",
+      "night",
+      "day",
+      "discussion",
+      "voting",
+      "reveal",
+      "results",
+    ].includes(parts[1])
+  ) {
+    return {
+      game: "mafia",
+      roomId: parts[2],
+      roomTable: "mafia_rooms",
+      playerTable: "mafia_players",
+      lobbyPrefix: "/mafia/room",
+    };
+  }
+
+  // WHO WOULD?
+  if (
+    parts.length === 3 &&
+    parts[0] === "who-would" &&
+    [
+      "question",
+      "voting",
+      "reveal",
+      "results",
+    ].includes(parts[1])
+  ) {
+    return {
+      game: "who-would",
+      roomId: parts[2],
+      roomTable: "who_would_rooms",
+      playerTable: "who_would_players",
+      lobbyPrefix: "/who-would/room",
+    };
+  }
+
+  return null;
+}
 
 export default function GameSessionControls() {
   const pathname = usePathname();
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language } =
+    useLanguage();
 
-  const routeInfo = useMemo(() => {
-    const parts = pathname
-      .split("/")
-      .filter(Boolean);
-
-    if (
-      parts.length !== 2 ||
-      !GAME_ROUTES.has(parts[0])
-    ) {
-      return null;
-    }
-
-    return {
-      roomId: decodeURIComponent(
-        parts[1]
+  const session = useMemo(
+    () =>
+      getSessionInfo(
+        pathname ?? ""
       ),
-    };
-  }, [pathname]);
+    [pathname]
+  );
 
-  const roomId =
-    routeInfo?.roomId ?? "";
-
-  const [room, setRoom] =
-    useState<Room | null>(null);
-
-  const [me, setMe] =
-    useState<Player | null>(null);
-
-  const [menuOpen, setMenuOpen] =
+  const [isHost, setIsHost] =
     useState(false);
 
-  const [ending, setEnding] =
+  const [roomCode, setRoomCode] =
+    useState<string | null>(
+      null
+    );
+
+  const [open, setOpen] =
     useState(false);
 
-  const [leaving, setLeaving] =
+  const [returning, setReturning] =
     useState(false);
 
-  const [actionError, setActionError] =
-    useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
-    if (!roomId) {
-      setRoom(null);
-      setMe(null);
+    setIsHost(false);
+    setRoomCode(null);
+    setOpen(false);
+    setError(null);
+
+    if (!session) {
       return;
     }
+
+    const activeSession =
+      session;
 
     let cancelled = false;
 
     async function load() {
-      try {
-        const [
-          freshRoom,
-          freshMe,
-        ] = await Promise.all([
-          getRoomById(roomId),
-          getMyPlayerInRoom(roomId),
-        ]);
+      const {
+        data: authData,
+      } =
+        await supabase.auth.getUser();
 
-        if (cancelled) return;
+      const userId =
+        authData.user?.id;
 
-        setRoom(freshRoom);
-        setMe(freshMe);
-      } catch (error) {
-        console.error(
-          "Could not load game controls:",
-          error
+      if (
+        cancelled ||
+        !userId
+      ) {
+        return;
+      }
+
+      const {
+        data: room,
+        error: roomError,
+      } = await supabase
+        .from(
+          activeSession.roomTable
+        )
+        .select(
+          "id, code, status, host_user_id"
+        )
+        .eq(
+          "id",
+          activeSession.roomId
+        )
+        .maybeSingle();
+
+      if (
+        cancelled ||
+        roomError ||
+        !room
+      ) {
+        return;
+      }
+
+      setRoomCode(
+        room.code as string
+      );
+
+      setIsHost(
+        room.host_user_id ===
+          userId
+      );
+
+      if (
+        room.status ===
+        "waiting"
+      ) {
+        router.replace(
+          `${activeSession.lobbyPrefix}/${room.code}`
         );
       }
     }
 
     void load();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [roomId]);
-
-  useEffect(() => {
-    if (!roomId) return;
-
     const channel = supabase
       .channel(
-        `game-controls-${roomId}`
+        `global-session-${activeSession.game}-${activeSession.roomId}`
       )
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
-          table: "rooms",
-          filter: `id=eq.${roomId}`,
+          table:
+            activeSession.roomTable,
+          filter: `id=eq.${activeSession.roomId}`,
         },
         (payload) => {
-          setRoom(
-            payload.new as Room
-          );
+          const updated =
+            payload.new as {
+              code?: string;
+              status?: string;
+              host_user_id?: string;
+            };
+
+          if (
+            updated.code
+          ) {
+            setRoomCode(
+              updated.code
+            );
+          }
+
+          if (
+            updated.status ===
+              "waiting" &&
+            updated.code
+          ) {
+            router.replace(
+              `${activeSession.lobbyPrefix}/${updated.code}`
+            );
+          }
         }
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
+
       void supabase.removeChannel(
         channel
       );
     };
-  }, [roomId]);
+  }, [
+    session,
+    router,
+  ]);
 
-  // When a match is cancelled, every remaining player returns
-  // to the SAME lobby automatically.
-  useEffect(() => {
+  async function handleReturnToLobby() {
     if (
-      !routeInfo ||
-      !room ||
-      room.status !== "waiting"
+      !session ||
+      !isHost ||
+      returning
     ) {
       return;
     }
 
-    router.replace(
-      `/room/${room.code}`
-    );
-  }, [
-    routeInfo,
-    room,
-    router,
-  ]);
-
-  if (
-    !routeInfo ||
-    !room ||
-    !me
-  ) {
-    return null;
-  }
-
-  async function handleEndGame() {
-    if (ending || leaving) return;
+    const activeSession =
+      session;
 
     const confirmed =
       window.confirm(
         language === "hr"
-          ? "Prekinuti trenutnu igru i vratiti sve u lobby?"
-          : "End the current game and return everyone to the lobby?"
+          ? "Vratiti SVE igrače u lobby? Trenutna partija će se resetirati."
+          : "Return ALL players to the lobby? The current game will be reset."
       );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
-    playSound("click");
-
-    setEnding(true);
-    setActionError(null);
+    setReturning(true);
+    setError(null);
 
     try {
-      await endGameToLobby(
-        room!.id
-      );
-    } catch (error: any) {
-      console.error(
-        "End game failed:",
-        error
+      const {
+        data,
+        error: rpcError,
+      } = await supabase.rpc(
+        "party_host_return_to_lobby",
+        {
+          p_game:
+            activeSession.game,
+          p_room_id:
+            activeSession.roomId,
+        }
       );
 
-      setActionError(
-        error?.message ??
+      if (rpcError) {
+        throw rpcError;
+      }
+
+      const code =
+        (data as string | null) ??
+        roomCode;
+
+      if (code) {
+        router.replace(
+          `${activeSession.lobbyPrefix}/${code}`
+        );
+      }
+    } catch (e: any) {
+      setError(
+        e?.message ??
           (language === "hr"
             ? "Nije moguće vratiti igru u lobby."
             : "Could not return the game to the lobby.")
       );
 
-      setEnding(false);
+      setReturning(false);
     }
   }
 
-  async function handleLeaveGame() {
-    if (leaving || ending) return;
-
-    const confirmed =
-      window.confirm(
-        language === "hr"
-          ? "Želiš izaći iz igre? Ostali igrači će se vratiti u lobby."
-          : "Leave the game? The remaining players will return to the lobby."
-      );
-
-    if (!confirmed) return;
-
-    playSound("click");
-
-    setLeaving(true);
-    setActionError(null);
-
-    try {
-      await leaveGame(
-        room!.id
-      );
-
-      router.replace("/");
-    } catch (error: any) {
-      console.error(
-        "Leave game failed:",
-        error
-      );
-
-      setActionError(
-        error?.message ??
-          (language === "hr"
-            ? "Nije moguće izaći iz igre."
-            : "Could not leave the game.")
-      );
-
-      setLeaving(false);
-    }
+  if (
+    !session ||
+    !isHost
+  ) {
+    return null;
   }
 
   return (
-    <div
-      className="
-        fixed
-        top-[calc(env(safe-area-inset-top)+8px)]
-        right-[125px]
-        z-[100]
-      "
-    >
-      {me.is_host ? (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              playSound("click");
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          setOpen(
+            (value) => !value
+          )
+        }
+        className="fixed right-4 top-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md"
+      >
+        👑 HOST
+      </button>
 
-              setMenuOpen(
-                (current) =>
-                  !current
-              );
-            }}
-            className="
-              rounded-xl
-              border
-              border-white/10
-              bg-black/70
-              px-3
-              py-2
-              text-xs
-              font-black
-              text-white
-              shadow-lg
-              backdrop-blur-md
-              transition
-              active:scale-95
-            "
-          >
-            ⚙️ HOST
-          </button>
+      {open && (
+        <div className="fixed right-4 top-16 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
+                👑{" "}
+                {language === "hr"
+                  ? "HOST MENI"
+                  : "HOST MENU"}
+              </p>
 
-          {menuOpen && (
-            <div
-              className="
-                absolute
-                right-0
-                mt-2
-                w-64
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#14141f]/95
-                p-4
-                shadow-2xl
-                backdrop-blur-xl
-              "
+              <p className="mt-1 text-xs text-white/40">
+                {language === "hr"
+                  ? "Kontrole za slučaj AFK igrača ili zaglavljene runde."
+                  : "Controls for AFK players or a stuck round."}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setOpen(false)
+              }
+              className="text-xl text-white/40"
             >
-              <p className="text-xs uppercase tracking-widest text-white/30">
-                {language === "hr"
-                  ? "HOST KONTROLE"
-                  : "HOST CONTROLS"}
-              </p>
+              ×
+            </button>
+          </div>
 
-              <p className="mt-3 text-sm leading-relaxed text-white/60">
-                {language === "hr"
-                  ? "Vrati sve u lobby ako je netko AFK ili želiš prekinuti trenutnu igru."
-                  : "Return everyone to the lobby if someone is AFK or you want to cancel the current game."}
-              </p>
-
-              <button
-                type="button"
-                disabled={ending}
-                onClick={
-                  handleEndGame
-                }
-                className="
-                  mt-4
-                  w-full
-                  rounded-xl
-                  border
-                  border-red-500/30
-                  bg-red-500/10
-                  px-4
-                  py-3
-                  text-sm
-                  font-black
-                  text-red-300
-                  transition
-                  active:scale-95
-                  disabled:opacity-40
-                "
-              >
-                {ending
-                  ? language === "hr"
-                    ? "VRAĆANJE..."
-                    : "RETURNING..."
-                  : language === "hr"
-                  ? "⛔ PREKINI IGRU"
-                  : "⛔ END GAME"}
-              </button>
-
-              {actionError && (
-                <p className="mt-3 text-xs text-red-300">
-                  {actionError}
-                </p>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
           <button
             type="button"
-            disabled={leaving}
             onClick={
-              handleLeaveGame
+              handleReturnToLobby
             }
-            className="
-              rounded-xl
-              border
-              border-red-500/20
-              bg-black/70
-              px-3
-              py-2
-              text-xs
-              font-black
-              text-red-300
-              shadow-lg
-              backdrop-blur-md
-              transition
-              active:scale-95
-              disabled:opacity-40
-            "
+            disabled={returning}
+            className="mt-4 w-full rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-4 text-left transition hover:bg-red-400/15 disabled:opacity-50"
           >
-            {leaving
-              ? "..."
-              : language === "hr"
-              ? "🚪 IZAĐI"
-              : "🚪 LEAVE"}
+            <p className="font-black text-red-300">
+              ↩{" "}
+              {returning
+                ? language === "hr"
+                  ? "VRAĆAM U LOBBY..."
+                  : "RETURNING..."
+                : language === "hr"
+                ? "VRATI SVE U LOBBY"
+                : "RETURN ALL TO LOBBY"}
+            </p>
+
+            <p className="mt-1 text-xs text-white/40">
+              {language === "hr"
+                ? "Resetira trenutnu partiju, ali svi igrači ostaju u istoj sobi."
+                : "Resets the current game while keeping everyone in the same room."}
+            </p>
           </button>
 
-          {actionError && (
-            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-red-500/20 bg-[#14141f]/95 p-3 text-xs text-red-300 shadow-xl">
-              {actionError}
-            </div>
+          {error && (
+            <p className="mt-3 text-sm text-red-300">
+              {error}
+            </p>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

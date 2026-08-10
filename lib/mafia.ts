@@ -901,16 +901,64 @@ export function useMafiaRoomRealtime(
           .on(
             "postgres_changes",
             {
-              event: "*",
+              event: "INSERT",
               schema: "public",
               table:
                 "mafia_players",
               filter: `room_id=eq.${roomData.id}`,
             },
-            () =>
-              refetchPlayers(
+            () => {
+              void refetchPlayers(
                 roomData.id
-              )
+              );
+            }
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table:
+                "mafia_players",
+              filter: `room_id=eq.${roomData.id}`,
+            },
+            () => {
+              void refetchPlayers(
+                roomData.id
+              );
+            }
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "DELETE",
+              schema: "public",
+              table:
+                "mafia_players",
+            },
+            (payload) => {
+              const deletedId =
+                (
+                  payload.old as
+                    | { id?: string }
+                    | null
+                )?.id;
+
+              if (deletedId) {
+                setPlayers(
+                  (current) =>
+                    current.filter(
+                      (player) =>
+                        player.id !==
+                        deletedId
+                    )
+                );
+              }
+
+              void refetchPlayers(
+                roomData.id
+              );
+            }
           )
           .subscribe();
     }

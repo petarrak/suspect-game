@@ -124,14 +124,10 @@ function getSessionInfo(
 export default function GameSessionControls() {
   const pathname = usePathname();
   const router = useRouter();
-  const { language } =
-    useLanguage();
+  const { language } = useLanguage();
 
   const session = useMemo(
-    () =>
-      getSessionInfo(
-        pathname ?? ""
-      ),
+    () => getSessionInfo(pathname ?? ""),
     [pathname]
   );
 
@@ -139,9 +135,7 @@ export default function GameSessionControls() {
     useState(false);
 
   const [roomCode, setRoomCode] =
-    useState<string | null>(
-      null
-    );
+    useState<string | null>(null);
 
   const [open, setOpen] =
     useState(false);
@@ -150,9 +144,7 @@ export default function GameSessionControls() {
     useState(false);
 
   const [error, setError] =
-    useState<string | null>(
-      null
-    );
+    useState<string | null>(null);
 
   useEffect(() => {
     setIsHost(false);
@@ -164,16 +156,14 @@ export default function GameSessionControls() {
       return;
     }
 
-    const activeSession =
-      session;
+    const activeSession = session;
 
     let cancelled = false;
 
     async function load() {
       const {
         data: authData,
-      } =
-        await supabase.auth.getUser();
+      } = await supabase.auth.getUser();
 
       const userId =
         authData.user?.id;
@@ -189,9 +179,7 @@ export default function GameSessionControls() {
         data: room,
         error: roomError,
       } = await supabase
-        .from(
-          activeSession.roomTable
-        )
+        .from(activeSession.roomTable)
         .select(
           "id, code, status, host_user_id"
         )
@@ -214,13 +202,11 @@ export default function GameSessionControls() {
       );
 
       setIsHost(
-        room.host_user_id ===
-          userId
+        room.host_user_id === userId
       );
 
       if (
-        room.status ===
-        "waiting"
+        room.status === "waiting"
       ) {
         router.replace(
           `${activeSession.lobbyPrefix}/${room.code}`
@@ -241,7 +227,8 @@ export default function GameSessionControls() {
           schema: "public",
           table:
             activeSession.roomTable,
-          filter: `id=eq.${activeSession.roomId}`,
+          filter:
+            `id=eq.${activeSession.roomId}`,
         },
         (payload) => {
           const updated =
@@ -251,9 +238,7 @@ export default function GameSessionControls() {
               host_user_id?: string;
             };
 
-          if (
-            updated.code
-          ) {
+          if (updated.code) {
             setRoomCode(
               updated.code
             );
@@ -293,8 +278,7 @@ export default function GameSessionControls() {
       return;
     }
 
-    const activeSession =
-      session;
+    const activeSession = session;
 
     const confirmed =
       window.confirm(
@@ -358,6 +342,7 @@ export default function GameSessionControls() {
 
   return (
     <>
+      {/* HOST BUTTON */}
       <button
         type="button"
         onClick={() =>
@@ -365,11 +350,12 @@ export default function GameSessionControls() {
             (value) => !value
           )
         }
-        className="fixed right-4 top-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md"
+        className="fixed right-24 top-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
       >
         👑 HOST
       </button>
 
+      {/* HOST MENU */}
       {open && (
         <div className="fixed right-4 top-16 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
@@ -393,12 +379,13 @@ export default function GameSessionControls() {
               onClick={() =>
                 setOpen(false)
               }
-              className="text-xl text-white/40"
+              className="text-xl text-white/40 transition hover:text-white"
             >
               ×
             </button>
           </div>
 
+          {/* RETURN ALL TO LOBBY */}
           <button
             type="button"
             onClick={

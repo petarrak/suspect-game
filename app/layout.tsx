@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="hr">
-      <body>
+      <body className="text-white">
         <LanguageProvider>
           <ReconnectGuard />
 

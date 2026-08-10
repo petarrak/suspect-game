@@ -5,33 +5,43 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { useRouter } from "next/navigation";
+
 import Button from "@/components/Button";
+import AvatarPicker from "@/components/AvatarPicker";
+
 import { joinRoom } from "@/lib/useRoom";
 import { useLanguage } from "@/components/LanguageProvider";
 
 export default function JoinGamePage() {
   const router = useRouter();
-  const { language, t } = useLanguage();
 
-  const [code, setCode] = useState("");
+  const {
+    language,
+    t,
+  } = useLanguage();
+
+  const [code, setCode] =
+    useState("");
+
   const [nickname, setNickname] =
     useState("");
+
+  const [avatar, setAvatar] =
+    useState("🐱");
+
   const [loading, setLoading] =
     useState(false);
+
   const [error, setError] =
     useState<string | null>(null);
 
   const nicknameRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement | null>(
+      null
+    );
 
-  /*
-   * QR code opens:
-   * /join?code=ABC123
-   *
-   * Read that code automatically and
-   * put the cursor directly in nickname.
-   */
   useEffect(() => {
     const params =
       new URLSearchParams(
@@ -51,7 +61,9 @@ export default function JoinGamePage() {
 
     setCode(cleanedCode);
 
-    if (cleanedCode.length === 6) {
+    if (
+      cleanedCode.length === 6
+    ) {
       window.setTimeout(() => {
         nicknameRef.current?.focus();
       }, 100);
@@ -60,7 +72,9 @@ export default function JoinGamePage() {
 
   async function handleJoin() {
     const trimmedCode =
-      code.trim().toUpperCase();
+      code
+        .trim()
+        .toUpperCase();
 
     const trimmedName =
       nickname.trim();
@@ -74,6 +88,7 @@ export default function JoinGamePage() {
           ? "Upiši cijeli kod sobe od 6 znakova."
           : "Enter the full 6-character room code."
       );
+
       return;
     }
 
@@ -83,15 +98,19 @@ export default function JoinGamePage() {
           ? "Prvo upiši nadimak."
           : "Enter a nickname first."
       );
+
       return;
     }
 
-    if (trimmedName.length > 20) {
+    if (
+      trimmedName.length > 20
+    ) {
       setError(
         language === "hr"
           ? "Nadimak može imati najviše 20 znakova."
           : "Keep your nickname under 20 characters."
       );
+
       return;
     }
 
@@ -102,7 +121,8 @@ export default function JoinGamePage() {
       const joinedCode =
         await joinRoom(
           trimmedCode,
-          trimmedName
+          trimmedName,
+          avatar
         );
 
       router.push(
@@ -121,7 +141,7 @@ export default function JoinGamePage() {
   }
 
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-8 p-6">
+    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-7 p-6">
       <button
         type="button"
         onClick={() =>
@@ -142,8 +162,8 @@ export default function JoinGamePage() {
         <p className="text-white/50">
           {code.length === 6
             ? language === "hr"
-              ? "Kod sobe je učitan. Samo upiši nadimak."
-              : "Room code loaded. Just enter your nickname."
+              ? "Kod sobe je učitan. Upiši nadimak i odaberi avatar."
+              : "Room code loaded. Enter your nickname and choose an avatar."
             : language === "hr"
             ? "Zatraži kod sobe od hosta ili skeniraj QR kod."
             : "Ask the host for the room code or scan the QR code."}
@@ -154,7 +174,9 @@ export default function JoinGamePage() {
         <div className="relative">
           <input
             className="input text-center tracking-[0.3em] uppercase"
-            placeholder={t("roomCode")}
+            placeholder={
+              t("roomCode")
+            }
             value={code}
             maxLength={6}
             onChange={(e) =>
@@ -174,7 +196,9 @@ export default function JoinGamePage() {
         <input
           ref={nicknameRef}
           className="input"
-          placeholder={t("nickname")}
+          placeholder={
+            t("nickname")
+          }
           value={nickname}
           maxLength={20}
           onChange={(e) =>
@@ -182,13 +206,14 @@ export default function JoinGamePage() {
               e.target.value
             )
           }
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleJoin();
-            }
-          }}
         />
       </div>
+
+      <AvatarPicker
+        value={avatar}
+        onChange={setAvatar}
+        language={language}
+      />
 
       {code.length === 6 && (
         <p className="text-green-400 text-sm text-center">
@@ -207,7 +232,9 @@ export default function JoinGamePage() {
 
       <div className="mt-auto">
         <Button
-          onClick={handleJoin}
+          onClick={
+            handleJoin
+          }
           disabled={loading}
         >
           {loading

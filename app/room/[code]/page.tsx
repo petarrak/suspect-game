@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Button from "@/components/Button";
+import AvatarPicker from "@/components/AvatarPicker";
 import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
@@ -67,6 +68,9 @@ export default function RoomPage() {
 
   const [nickname, setNickname] =
     useState("");
+
+  const [avatar, setAvatar] =
+    useState("🐱");
 
   const [joinLoading, setJoinLoading] =
     useState(false);
@@ -144,7 +148,11 @@ export default function RoomPage() {
     setJoinError(null);
 
     try {
-      await joinRoom(code, trimmed);
+      await joinRoom(
+        code,
+        trimmed,
+        avatar
+      );
       window.location.reload();
     } catch (e: any) {
       setJoinError(
@@ -499,6 +507,12 @@ export default function RoomPage() {
             }
           }}
           autoFocus
+        />
+
+        <AvatarPicker
+          value={avatar}
+          onChange={setAvatar}
+          language={language}
         />
 
         {joinError && (

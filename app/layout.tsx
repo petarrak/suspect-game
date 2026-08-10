@@ -10,6 +10,7 @@ import {
 } from "@/components/LanguageProvider";
 
 import PageTransition from "@/components/PageTransition";
+import GameSessionControls from "@/components/GameSessionControls";
 
 export const metadata: Metadata = {
   title: "SUSPECT 🕵️",
@@ -50,6 +51,8 @@ export default function RootLayout({
             <PageTransition>
               {children}
             </PageTransition>
+
+            <GameSessionControls />
           </div>
         </LanguageProvider>
       </body>

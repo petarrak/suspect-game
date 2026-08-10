@@ -2,16 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
 import Button from "@/components/Button";
+import AvatarPicker from "@/components/AvatarPicker";
+
 import { createRoom } from "@/lib/useRoom";
 import { useLanguage } from "@/components/LanguageProvider";
 
 export default function CreateGamePage() {
   const router = useRouter();
-  const { t } = useLanguage();
+
+  const {
+    language,
+    t,
+  } = useLanguage();
 
   const [nickname, setNickname] =
     useState("");
+
+  const [avatar, setAvatar] =
+    useState("🐱");
 
   const [loading, setLoading] =
     useState(false);
@@ -27,6 +37,7 @@ export default function CreateGamePage() {
       setError(
         t("enterNickname")
       );
+
       return;
     }
 
@@ -34,6 +45,7 @@ export default function CreateGamePage() {
       setError(
         t("nicknameTooLong")
       );
+
       return;
     }
 
@@ -42,7 +54,10 @@ export default function CreateGamePage() {
 
     try {
       const code =
-        await createRoom(trimmed);
+        await createRoom(
+          trimmed,
+          avatar
+        );
 
       router.push(
         `/room/${code}`
@@ -58,8 +73,7 @@ export default function CreateGamePage() {
   }
 
   return (
-    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-8 p-6">
-
+    <main className="min-h-screen max-w-md mx-auto flex flex-col gap-7 p-6">
       <button
         type="button"
         onClick={() =>
@@ -90,12 +104,13 @@ export default function CreateGamePage() {
             e.target.value
           )
         }
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            handleCreate();
-          }
-        }}
         autoFocus
+      />
+
+      <AvatarPicker
+        value={avatar}
+        onChange={setAvatar}
+        language={language}
       />
 
       {error && (
@@ -106,7 +121,9 @@ export default function CreateGamePage() {
 
       <div className="mt-auto">
         <Button
-          onClick={handleCreate}
+          onClick={
+            handleCreate
+          }
           disabled={loading}
         >
           {loading
@@ -114,7 +131,6 @@ export default function CreateGamePage() {
             : t("createGame")}
         </Button>
       </div>
-
     </main>
   );
 }

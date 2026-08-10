@@ -62,7 +62,10 @@ export function getRememberedPlayerId(code: string): string | null {
  * Creates a new room, signs the host in anonymously, and adds them
  * as the first (host) player. Returns the room code to redirect to.
  */
-export async function createRoom(nickname: string): Promise<string> {
+export async function createRoom(
+  nickname: string,
+  avatar: string
+): Promise<string> {
   const userId = await ensureAnonSession();
   const code = generateRoomCode();
 
@@ -82,7 +85,7 @@ export async function createRoom(nickname: string): Promise<string> {
       room_id: room.id,
       user_id: userId,
       nickname,
-      avatar: randomAvatar(),
+      avatar,
       is_host: true,
     })
     .select()
@@ -100,7 +103,11 @@ export async function createRoom(nickname: string): Promise<string> {
  * Joins an existing room by code. Validates the room exists, hasn't
  * started, and the nickname is free.
  */
-export async function joinRoom(codeInput: string, nickname: string): Promise<string> {
+export async function joinRoom(
+  codeInput: string,
+  nickname: string,
+  avatar: string
+): Promise<string> {
   const userId = await ensureAnonSession();
   const code = codeInput.trim().toUpperCase();
 
@@ -150,7 +157,7 @@ export async function joinRoom(codeInput: string, nickname: string): Promise<str
       room_id: room.id,
       user_id: userId,
       nickname,
-      avatar: randomAvatar(),
+      avatar,
       is_host: false,
     })
     .select()
@@ -498,6 +505,69 @@ export async function revealSuspect(roomId: string): Promise<void> {
 
     throw new Error(
       detail || "Could not reveal and score the round."
+    );
+  }
+}
+
+
+/**
+ * Host-only: cancels the current game and sends the whole room back
+ * to the existing lobby.
+ */
+export async function endGameToLobby(
+  roomId: string
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "end_game_to_lobby",
+    {
+      p_room_id: roomId,
+    }
+  );
+
+  if (error) {
+    const detail = [
+      error.message,
+      error.details,
+      error.hint,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    throw new Error(
+      detail ||
+        "Could not return the game to the lobby."
+    );
+  }
+}
+
+
+/**
+ * Non-host player: leaves the current room.
+ * If a game is active, PostgreSQL safely returns the remaining
+ * players to the same lobby before removing this player.
+ */
+export async function leaveGame(
+  roomId: string
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "leave_game",
+    {
+      p_room_id: roomId,
+    }
+  );
+
+  if (error) {
+    const detail = [
+      error.message,
+      error.details,
+      error.hint,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    throw new Error(
+      detail ||
+        "Could not leave the game."
     );
   }
 }

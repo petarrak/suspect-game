@@ -78,6 +78,27 @@ export interface Player {
   joined_at: string;
 }
 
+export interface PlayerProfile {
+  user_id: string;
+  nickname: string;
+  avatar: string;
+
+  games_played: number;
+  wins: number;
+
+  times_suspect: number;
+  times_caught: number;
+  times_escaped: number;
+
+  correct_votes: number;
+  wrong_votes: number;
+
+  best_score: number;
+
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Question {
   id: number;
   category: string;

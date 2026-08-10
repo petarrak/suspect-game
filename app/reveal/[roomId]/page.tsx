@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Button from "@/components/Button";
+import PlayerProfileModal from "@/components/PlayerProfileModal";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase, ensureAnonSession } from "@/lib/supabase";
 import { startGame } from "@/lib/useRoom";
@@ -58,6 +59,11 @@ export default function RevealPage() {
   const [question, setQuestion] = useState<QuestionInfo | null>(null);
 
   const [meId, setMeId] = useState<string | null>(null);
+
+  const [
+    selectedProfileUserId,
+    setSelectedProfileUserId,
+  ] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] =
@@ -240,6 +246,27 @@ export default function RevealPage() {
             throw new Error(
               `Scoring: ${scoreError.message}`
             );
+          }
+
+          if (
+            roomData.current_round >=
+            roomData.total_rounds
+          ) {
+            const {
+              error: lifetimeError,
+            } = await supabase.rpc(
+              "finalize_lifetime_profiles",
+              {
+                p_room_id: roomData.id,
+              }
+            );
+
+            if (lifetimeError) {
+              console.error(
+                "Lifetime profile finalization failed:",
+                lifetimeError
+              );
+            }
           }
         }
 
@@ -1084,9 +1111,15 @@ export default function RevealPage() {
         <div className="flex flex-col gap-3">
           {leaderboard.map(
             (player, index) => (
-              <motion.div
+              <motion.button
+                type="button"
                 key={player.id}
                 layout
+                onClick={() =>
+                  setSelectedProfileUserId(
+                    player.user_id
+                  )
+                }
                 initial={{ opacity: 0, x: -18, scale: 0.97 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 transition={{
@@ -1094,7 +1127,8 @@ export default function RevealPage() {
                   delay: 2.25 + index * 0.09,
                 }}
                 whileHover={{ scale: 1.015, x: 3 }}
-                className={`flex items-center gap-4 rounded-2xl border px-4 py-4 ${
+                whileTap={{ scale: 0.985 }}
+                className={`w-full text-left flex items-center gap-4 rounded-2xl border px-4 py-4 ${
                   index === 0
                     ? "border-yellow-400/25 bg-yellow-400/10"
                     : "border-white/10 bg-black/20"
@@ -1141,7 +1175,7 @@ export default function RevealPage() {
                 >
                   {player.score}
                 </motion.div>
-              </motion.div>
+              </motion.button>
             )
           )}
         </div>
@@ -1266,9 +1300,15 @@ export default function RevealPage() {
                     );
 
               return (
-                <div
+                <button
+                  type="button"
                   key={`stats-${player.id}`}
-                  className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                  onClick={() =>
+                    setSelectedProfileUserId(
+                      player.user_id
+                    )
+                  }
+                  className="w-full text-left rounded-2xl border border-white/10 bg-black/20 p-4 transition active:scale-[0.99]"
                 >
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="font-bold flex items-center gap-2">
@@ -1328,7 +1368,7 @@ export default function RevealPage() {
                       </p>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -1495,6 +1535,14 @@ export default function RevealPage() {
         )}
 
       </div>
+
+
+      <PlayerProfileModal
+        userId={selectedProfileUserId}
+        onClose={() =>
+          setSelectedProfileUserId(null)
+        }
+      />
 
     </main>
   );

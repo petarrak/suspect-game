@@ -407,28 +407,6 @@ export default function WhoWouldResultsPage() {
           y: 0,
         }}
       >
-        <motion.div
-          className="text-7xl"
-          initial={{
-            opacity: 0,
-            scale: 0,
-            rotate: -20,
-          }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            rotate: 0,
-          }}
-          transition={{
-            delay: 0.15,
-            type: "spring",
-            stiffness: 220,
-            damping: 12,
-          }}
-        >
-          🏆
-        </motion.div>
-
         <motion.p
           className="mt-4 text-xs font-black uppercase tracking-[0.25em] text-accent"
           initial={{

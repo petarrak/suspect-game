@@ -95,35 +95,12 @@ export default function BombGamePage() {
   ] = useState(false);
 
   const [
-    passVisible,
-    setPassVisible,
-  ] = useState(false);
-
-  const [
-    lastPassedTo,
-    setLastPassedTo,
-  ] =
-    useState<string | null>(
-      null
-    );
-
-  const [
     tickSpeed,
     setTickSpeed,
   ] = useState(900);
 
   const resolvingRef =
     useRef(false);
-
-  const previousHolderRef =
-    useRef<string | null>(
-      null
-    );
-
-  const previousRoundRef =
-    useRef<number | null>(
-      null
-    );
 
   const loadState =
     useCallback(
@@ -261,69 +238,10 @@ export default function BombGamePage() {
   ]);
 
   /*
-   * Detect bomb passing and new rounds.
-   */
-
-  useEffect(() => {
-    if (!state) {
-      return;
-    }
-
-    if (
-      previousHolderRef.current &&
-      previousHolderRef.current !==
-        state.current_holder_player_id &&
-      previousRoundRef.current ===
-        state.round_number
-    ) {
-      setPassVisible(true);
-
-      const next =
-        state.players.find(
-          (player) =>
-            player.id ===
-            state.current_holder_player_id
-        );
-
-      setLastPassedTo(
-        next?.nickname ??
-          null
-      );
-
-      const timer =
-        window.setTimeout(
-          () => {
-            setPassVisible(
-              false
-            );
-          },
-          900
-        );
-
-      previousHolderRef.current =
-        state.current_holder_player_id;
-
-      return () => {
-        window.clearTimeout(
-          timer
-        );
-      };
-    }
-
-    previousHolderRef.current =
-      state.current_holder_player_id;
-
-    previousRoundRef.current =
-      state.round_number;
-  }, [
-    state,
-  ]);
-
-  /*
    * Tick sound.
    *
-   * The actual countdown stays hidden.
-   * Tick becomes faster as server deadline approaches.
+   * Actual countdown stays hidden.
+   * Tick gets faster as the deadline approaches.
    */
 
   useEffect(() => {
@@ -349,15 +267,24 @@ export default function BombGamePage() {
           end - Date.now()
         );
 
-      if (remaining <= 3000) {
+      if (
+        remaining <=
+        3000
+      ) {
         return 220;
       }
 
-      if (remaining <= 6000) {
+      if (
+        remaining <=
+        6000
+      ) {
         return 350;
       }
 
-      if (remaining <= 10000) {
+      if (
+        remaining <=
+        10000
+      ) {
         return 500;
       }
 
@@ -433,10 +360,8 @@ export default function BombGamePage() {
   ]);
 
   /*
-   * Ask server whether bomb exploded.
-   *
-   * Multiple phones may call this.
-   * Backend row locking makes it safe.
+   * Ask the server whether
+   * the bomb has exploded.
    */
 
   useEffect(() => {
@@ -838,34 +763,6 @@ export default function BombGamePage() {
                 </p>
               )}
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {passVisible && (
-          <motion.div
-            className="pointer-events-none fixed left-1/2 top-[18%] z-[150] -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-5 py-3 text-sm font-black shadow-2xl backdrop-blur-xl"
-            initial={{
-              opacity: 0,
-              y: -20,
-              scale: 0.9,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-            }}
-            exit={{
-              opacity: 0,
-              y: -10,
-            }}
-          >
-            💣 →{" "}
-            {lastPassedTo ??
-              (language === "hr"
-                ? "sljedeći igrač"
-                : "next player")}
           </motion.div>
         )}
       </AnimatePresence>

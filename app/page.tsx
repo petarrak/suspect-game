@@ -31,7 +31,6 @@ const games = [
     href: "/suspect",
     ready: true,
   },
-
   {
     name: "LIAR",
     emoji: "🤥",
@@ -40,7 +39,6 @@ const games = [
     href: "/liar",
     ready: true,
   },
-
   {
     name: "MAFIA",
     emoji: "🎭",
@@ -49,7 +47,6 @@ const games = [
     href: "/mafia",
     ready: true,
   },
-
   {
     name: "WHO WOULD?",
     emoji: "😂",
@@ -411,11 +408,48 @@ export default function PartyGamesHomePage() {
         )}
       </section>
 
-      <p className="mt-auto pt-6 text-center text-xs text-white/25">
-        {language === "hr"
-          ? "Sve igre su spremne za igranje."
-          : "All games are ready to play."}
-      </p>
+      <footer className="mt-auto pt-6">
+        <p className="text-center text-xs text-white/25">
+          {language === "hr"
+            ? "Sve igre su spremne za igranje."
+            : "All games are ready to play."}
+        </p>
+
+        <motion.div
+          className="mt-5 flex items-center justify-end"
+          initial={{
+            opacity: 0,
+            y: 8,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.45,
+          }}
+        >
+          <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 shadow-lg shadow-black/20">
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]">
+              <img
+                src="/rak-logo.png"
+                alt="RAK logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+
+            <div className="leading-none">
+              <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/30">
+                MADE BY
+              </p>
+
+              <p className="mt-1.5 text-xs font-black tracking-[0.18em] text-accent">
+                RAK
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </footer>
     </main>
   );
 }

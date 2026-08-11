@@ -12,7 +12,6 @@ import {
 } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
-import { rematchBombGame } from "@/lib/bomb";
 import { useLanguage } from "@/components/LanguageProvider";
 
 type GameType =
@@ -36,7 +35,10 @@ function getSessionInfo(
     .split("/")
     .filter(Boolean);
 
-  // SUSPECT
+  // =========================
+  // SUSPECT ACTIVE GAME
+  // =========================
+
   if (
     parts.length === 2 &&
     [
@@ -54,7 +56,10 @@ function getSessionInfo(
     };
   }
 
-  // LIAR
+  // =========================
+  // LIAR ACTIVE GAME
+  // =========================
+
   if (
     parts.length === 3 &&
     parts[0] === "liar" &&
@@ -74,7 +79,10 @@ function getSessionInfo(
     };
   }
 
-  // MAFIA
+  // =========================
+  // MAFIA ACTIVE GAME
+  // =========================
+
   if (
     parts.length === 3 &&
     parts[0] === "mafia" &&
@@ -96,7 +104,10 @@ function getSessionInfo(
     };
   }
 
-  // WHO WOULD
+  // =========================
+  // WHO WOULD ACTIVE GAME
+  // =========================
+
   if (
     parts.length === 3 &&
     parts[0] === "who-would" &&
@@ -115,7 +126,10 @@ function getSessionInfo(
     };
   }
 
-  // BOMB
+  // =========================
+  // BOMB ACTIVE GAME
+  // =========================
+
   if (
     parts.length === 3 &&
     parts[0] === "bomb" &&
@@ -143,6 +157,8 @@ function isLobbyPage(
     .filter(Boolean);
 
   // SUSPECT
+  // /room/ABC123
+
   if (
     parts.length === 2 &&
     parts[0] === "room"
@@ -151,6 +167,8 @@ function isLobbyPage(
   }
 
   // LIAR
+  // /liar/room/ABC123
+
   if (
     parts.length === 3 &&
     parts[0] === "liar" &&
@@ -160,6 +178,8 @@ function isLobbyPage(
   }
 
   // MAFIA
+  // /mafia/room/ABC123
+
   if (
     parts.length === 3 &&
     parts[0] === "mafia" &&
@@ -169,6 +189,8 @@ function isLobbyPage(
   }
 
   // WHO WOULD
+  // /who-would/room/ABC123
+
   if (
     parts.length === 3 &&
     parts[0] === "who-would" &&
@@ -178,6 +200,8 @@ function isLobbyPage(
   }
 
   // BOMB
+  // /bomb/room/ABC123
+
   if (
     parts.length === 3 &&
     parts[0] === "bomb" &&
@@ -233,6 +257,25 @@ export default function GameSessionControls() {
     useState<string | null>(
       null
     );
+
+  // =========================
+  // POSITIONING
+  // =========================
+  //
+  // Language switcher is already
+  // in the top-right corner.
+  //
+  // HOST therefore sits below it.
+
+  const hostTop =
+    "calc(env(safe-area-inset-top, 0px) + 4.25rem)";
+
+  const menuTop =
+    "calc(env(safe-area-inset-top, 0px) + 7.75rem)";
+
+  // =========================
+  // ACTIVE GAME SESSION
+  // =========================
 
   useEffect(() => {
     setIsHost(false);
@@ -298,6 +341,9 @@ export default function GameSessionControls() {
         room.host_user_id ===
           userId
       );
+
+      // Ako je igra vraćena u lobby,
+      // prebaci i ovaj uređaj.
 
       if (
         room.status ===
@@ -371,6 +417,10 @@ export default function GameSessionControls() {
     router,
   ]);
 
+  // =========================
+  // HOST RETURN TO LOBBY
+  // =========================
+
   async function handleReturnToLobby() {
     if (
       !session ||
@@ -398,32 +448,6 @@ export default function GameSessionControls() {
     setError(null);
 
     try {
-      /*
-       * BOMB ima vlastiti reset RPC.
-       */
-      if (
-        activeSession.game ===
-        "bomb"
-      ) {
-        await rematchBombGame(
-          activeSession.roomId
-        );
-
-        if (roomCode) {
-          router.replace(
-            `/bomb/room/${roomCode}`
-          );
-        }
-
-        setReturning(false);
-
-        return;
-      }
-
-      /*
-       * Ostale 4 igre koriste
-       * postojeći globalni RPC.
-       */
       const {
         data,
         error: rpcError,
@@ -432,6 +456,7 @@ export default function GameSessionControls() {
         {
           p_game:
             activeSession.game,
+
           p_room_id:
             activeSession.roomId,
         }
@@ -464,69 +489,37 @@ export default function GameSessionControls() {
     }
   }
 
-  const safeTop =
-    "calc(env(safe-area-inset-top, 0px) + 1rem)";
-
-  const menuTop =
-    "calc(env(safe-area-inset-top, 0px) + 4.5rem)";
-
   return (
     <>
+      {/* =====================
+          HOME BUTTON
+          samo u lobbyju
+      ====================== */}
+
       {lobbyPage && (
         <button
           type="button"
-          aria-label={
-            language === "hr"
-              ? "Povratak na početnu"
-              : "Return home"
-          }
           onClick={() =>
             router.push("/")
           }
-          style={{
-            top: safeTop,
-          }}
-          className="
-            fixed left-4 z-[100]
-            flex min-h-[44px] items-center gap-2
-            rounded-full
-            border border-white/15
-            bg-black/70
-            px-4
-            text-xs font-black text-white
-            shadow-xl
-            backdrop-blur-md
-            transition
-            hover:border-accent/40
-            hover:bg-white/10
-            active:scale-[0.96]
-          "
+          className="fixed left-4 top-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
         >
-          <span
-            aria-hidden="true"
-            className="text-base"
-          >
-            🏠
-          </span>
-
-          <span>
-            {language === "hr"
-              ? "POČETNA"
-              : "HOME"}
-          </span>
+          🏠{" "}
+          {language === "hr"
+            ? "POČETNA"
+            : "HOME"}
         </button>
       )}
+
+      {/* =====================
+          HOST BUTTON
+          ispod EN / HR
+      ====================== */}
 
       {session &&
         isHost && (
           <button
             type="button"
-            aria-expanded={open}
-            aria-label={
-              language === "hr"
-                ? "Otvori host meni"
-                : "Open host menu"
-            }
             onClick={() =>
               setOpen(
                 (value) =>
@@ -534,162 +527,95 @@ export default function GameSessionControls() {
               )
             }
             style={{
-              top: safeTop,
+              top: hostTop,
             }}
-            className="
-              fixed right-4 z-[100]
-              flex min-h-[44px] items-center gap-2
-              rounded-full
-              border border-white/15
-              bg-black/70
-              px-4
-              text-xs font-black text-white
-              shadow-xl
-              backdrop-blur-md
-              transition
-              hover:border-accent/40
-              hover:bg-white/10
-              active:scale-[0.96]
-            "
+            className="fixed right-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
           >
-            <span
-              aria-hidden="true"
-              className="text-base"
-            >
-              👑
-            </span>
-
-            <span>
-              HOST
-            </span>
+            👑 HOST
           </button>
         )}
+
+      {/* =====================
+          HOST MENU
+      ====================== */}
 
       {session &&
         isHost &&
         open && (
-          <>
-            <button
-              type="button"
-              aria-label={
-                language === "hr"
-                  ? "Zatvori host meni"
-                  : "Close host menu"
-              }
-              onClick={() =>
-                setOpen(false)
-              }
-              className="fixed inset-0 z-[99] bg-black/20"
-            />
+          <div
+            style={{
+              top: menuTop,
+            }}
+            className="fixed right-4 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
+                  👑{" "}
+                  {language ===
+                  "hr"
+                    ? "HOST MENI"
+                    : "HOST MENU"}
+                </p>
 
-            <div
-              style={{
-                top: menuTop,
-              }}
-              className="
-                fixed right-4 z-[100]
-                w-[min(21rem,calc(100vw-2rem))]
-                rounded-3xl
-                border border-white/10
-                bg-[#15121f]/95
-                p-4
-                shadow-2xl
-                backdrop-blur-xl
-              "
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
-                    👑{" "}
-                    {language === "hr"
-                      ? "HOST MENI"
-                      : "HOST MENU"}
-                  </p>
-
-                  <p className="mt-1 text-xs leading-relaxed text-white/40">
-                    {language === "hr"
-                      ? "Kontrole za slučaj AFK igrača ili zaglavljene runde."
-                      : "Controls for AFK players or a stuck round."}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  aria-label={
-                    language === "hr"
-                      ? "Zatvori"
-                      : "Close"
-                  }
-                  onClick={() =>
-                    setOpen(false)
-                  }
-                  className="
-                    flex h-11 w-11
-                    shrink-0
-                    items-center justify-center
-                    rounded-full
-                    text-2xl text-white/40
-                    transition
-                    hover:bg-white/5
-                    hover:text-white
-                    active:scale-90
-                  "
-                >
-                  ×
-                </button>
+                <p className="mt-1 text-xs text-white/40">
+                  {language ===
+                  "hr"
+                    ? "Kontrole za slučaj AFK igrača ili zaglavljene runde."
+                    : "Controls for AFK players or a stuck round."}
+                </p>
               </div>
 
               <button
                 type="button"
-                onClick={
-                  handleReturnToLobby
+                onClick={() =>
+                  setOpen(
+                    false
+                  )
                 }
-                disabled={
-                  returning
-                }
-                className="
-                  mt-4
-                  min-h-[64px]
-                  w-full
-                  rounded-2xl
-                  border border-red-400/30
-                  bg-red-400/10
-                  px-4 py-4
-                  text-left
-                  transition
-                  hover:bg-red-400/15
-                  active:scale-[0.98]
-                  disabled:pointer-events-none
-                  disabled:opacity-50
-                "
+                className="text-xl text-white/40 transition hover:text-white"
               >
-                <p className="font-black text-red-300">
-                  ↩{" "}
-                  {returning
-                    ? language ===
-                      "hr"
-                      ? "VRAĆAM U LOBBY..."
-                      : "RETURNING..."
-                    : language ===
-                      "hr"
-                    ? "VRATI SVE U LOBBY"
-                    : "RETURN ALL TO LOBBY"}
-                </p>
-
-                <p className="mt-1 text-xs leading-relaxed text-white/40">
-                  {language === "hr"
-                    ? "Resetira trenutnu partiju, ali svi igrači ostaju u istoj sobi."
-                    : "Resets the current game while keeping everyone in the same room."}
-                </p>
+                ×
               </button>
-
-              {error && (
-                <p className="mt-3 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
-                  {error}
-                </p>
-              )}
             </div>
-          </>
+
+            <button
+              type="button"
+              onClick={
+                handleReturnToLobby
+              }
+              disabled={
+                returning
+              }
+              className="mt-4 w-full rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-4 text-left transition hover:bg-red-400/15 disabled:opacity-50"
+            >
+              <p className="font-black text-red-300">
+                ↩{" "}
+                {returning
+                  ? language ===
+                    "hr"
+                    ? "VRAĆAM U LOBBY..."
+                    : "RETURNING..."
+                  : language ===
+                    "hr"
+                  ? "VRATI SVE U LOBBY"
+                  : "RETURN ALL TO LOBBY"}
+              </p>
+
+              <p className="mt-1 text-xs text-white/40">
+                {language ===
+                "hr"
+                  ? "Resetira trenutnu partiju, ali svi igrači ostaju u istoj sobi."
+                  : "Resets the current game while keeping everyone in the same room."}
+              </p>
+            </button>
+
+            {error && (
+              <p className="mt-3 text-sm text-red-300">
+                {error}
+              </p>
+            )}
+          </div>
         )}
     </>
   );

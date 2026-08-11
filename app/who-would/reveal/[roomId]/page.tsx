@@ -612,32 +612,6 @@ export default function WhoWouldRevealPage() {
                     index * 0.08,
                 }}
               >
-                {winner && (
-                  <motion.div
-                    className="absolute right-3 top-2 text-xl"
-                    initial={{
-                      opacity: 0,
-                      scale: 0,
-                      rotate: -15,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      rotate: 0,
-                    }}
-                    transition={{
-                      delay:
-                        0.8 +
-                        index *
-                          0.08,
-                      type:
-                        "spring",
-                    }}
-                  >
-                    👑
-                  </motion.div>
-                )}
-
                 <div className="flex items-center gap-3">
                   <motion.span
                     className="text-3xl"

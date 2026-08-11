@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -149,7 +149,7 @@ export default function WhoWouldRevealPage() {
         ) {
           throw new Error(
             language === "hr"
-              ? "Nije moguće učitati rezultate."
+              ? "Nije moguÄ‡e uÄŤitati rezultate."
               : "Could not load results."
           );
         }
@@ -183,7 +183,7 @@ export default function WhoWouldRevealPage() {
           setError(
             e?.message ??
               (language === "hr"
-                ? "Nije moguće učitati reveal."
+                ? "Nije moguÄ‡e uÄŤitati reveal."
                 : "Could not load reveal.")
           );
         }
@@ -446,7 +446,7 @@ export default function WhoWouldRevealPage() {
       setError(
         e?.message ??
           (language === "hr"
-            ? "Nije moguće nastaviti."
+            ? "Nije moguÄ‡e nastaviti."
             : "Could not continue.")
       );
 
@@ -482,7 +482,7 @@ export default function WhoWouldRevealPage() {
               repeat: Infinity,
             }}
           >
-            🎉
+            đźŽ‰
           </motion.div>
 
           <p className="mt-4 text-white/50">
@@ -536,7 +536,7 @@ export default function WhoWouldRevealPage() {
         }}
       >
         <p className="text-xs font-black uppercase tracking-[0.25em] text-accent">
-          😂 WHO WOULD?
+          đź‚ WHO WOULD?
         </p>
 
         <p className="mt-2 text-sm text-white/35">
@@ -634,7 +634,7 @@ export default function WhoWouldRevealPage() {
                         "spring",
                     }}
                   >
-                    👑
+                    đź‘‘
                   </motion.div>
                 )}
 
@@ -768,7 +768,7 @@ export default function WhoWouldRevealPage() {
           }}
         >
           <p className="font-black text-yellow-300">
-            🏆{" "}
+            đźŹ†{" "}
             {language === "hr"
               ? "ZADNJA RUNDA!"
               : "FINAL ROUND!"}
@@ -776,7 +776,7 @@ export default function WhoWouldRevealPage() {
 
           <p className="mt-2 text-sm text-white/40">
             {language === "hr"
-              ? "Sljedeće otvaramo završne rezultate."
+              ? "SljedeÄ‡e otvaramo zavrĹˇne rezultate."
               : "Final results are next."}
           </p>
         </motion.div>
@@ -813,20 +813,20 @@ export default function WhoWouldRevealPage() {
           >
             {continuing
               ? language === "hr"
-                ? "UČITAVANJE..."
+                ? "UÄŚITAVANJE..."
                 : "LOADING..."
               : finalRound
               ? language === "hr"
-                ? "🏆 ZAVRŠNI REZULTATI"
-                : "🏆 FINAL RESULTS"
+                ? "đźŹ† ZAVRĹ NI REZULTATI"
+                : "đźŹ† FINAL RESULTS"
               : language === "hr"
-              ? "➡️ SLJEDEĆA RUNDA"
-              : "➡️ NEXT ROUND"}
+              ? "âžˇď¸Ź SLJEDEÄ†A RUNDA"
+              : "âžˇď¸Ź NEXT ROUND"}
           </Button>
         ) : (
           <p className="text-center text-sm text-white/35">
             {language === "hr"
-              ? "Čekamo hosta..."
+              ? "ÄŚekamo hosta..."
               : "Waiting for host..."}
           </p>
         )}

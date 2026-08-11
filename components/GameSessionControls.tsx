@@ -12,13 +12,15 @@ import {
 } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { rematchBombGame } from "@/lib/bomb";
 import { useLanguage } from "@/components/LanguageProvider";
 
 type GameType =
   | "suspect"
   | "liar"
   | "mafia"
-  | "who-would";
+  | "who-would"
+  | "bomb";
 
 type SessionInfo = {
   game: GameType;
@@ -113,6 +115,23 @@ function getSessionInfo(
     };
   }
 
+  // BOMB
+  if (
+    parts.length === 3 &&
+    parts[0] === "bomb" &&
+    [
+      "game",
+      "results",
+    ].includes(parts[1])
+  ) {
+    return {
+      game: "bomb",
+      roomId: parts[2],
+      roomTable: "bomb_rooms",
+      lobbyPrefix: "/bomb/room",
+    };
+  }
+
   return null;
 }
 
@@ -153,6 +172,15 @@ function isLobbyPage(
   if (
     parts.length === 3 &&
     parts[0] === "who-would" &&
+    parts[1] === "room"
+  ) {
+    return true;
+  }
+
+  // BOMB
+  if (
+    parts.length === 3 &&
+    parts[0] === "bomb" &&
     parts[1] === "room"
   ) {
     return true;
@@ -370,6 +398,32 @@ export default function GameSessionControls() {
     setError(null);
 
     try {
+      /*
+       * BOMB ima vlastiti reset RPC.
+       */
+      if (
+        activeSession.game ===
+        "bomb"
+      ) {
+        await rematchBombGame(
+          activeSession.roomId
+        );
+
+        if (roomCode) {
+          router.replace(
+            `/bomb/room/${roomCode}`
+          );
+        }
+
+        setReturning(false);
+
+        return;
+      }
+
+      /*
+       * Ostale 4 igre koriste
+       * postojeći globalni RPC.
+       */
       const {
         data,
         error: rpcError,
@@ -418,8 +472,6 @@ export default function GameSessionControls() {
 
   return (
     <>
-      {/* HOME BUTTON - lobby */}
-
       {lobbyPage && (
         <button
           type="button"
@@ -464,8 +516,6 @@ export default function GameSessionControls() {
           </span>
         </button>
       )}
-
-      {/* HOST BUTTON - active game */}
 
       {session &&
         isHost && (
@@ -514,8 +564,6 @@ export default function GameSessionControls() {
             </span>
           </button>
         )}
-
-      {/* HOST MENU */}
 
       {session &&
         isHost &&

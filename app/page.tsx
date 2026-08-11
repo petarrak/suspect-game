@@ -31,6 +31,7 @@ const games = [
     href: "/suspect",
     ready: true,
   },
+
   {
     name: "LIAR",
     emoji: "🤥",
@@ -39,6 +40,7 @@ const games = [
     href: "/liar",
     ready: true,
   },
+
   {
     name: "MAFIA",
     emoji: "🎭",
@@ -47,12 +49,22 @@ const games = [
     href: "/mafia",
     ready: true,
   },
+
   {
     name: "WHO WOULD?",
     emoji: "😂",
     hr: "Glasaj koji prijatelj najbolje odgovara pitanju.",
     en: "Vote for the friend who best fits the question.",
     href: "/who-would",
+    ready: true,
+  },
+
+  {
+    name: "BOMB",
+    emoji: "💣",
+    hr: "Odgovori brzo i riješi se bombe prije eksplozije.",
+    en: "Answer fast and pass the bomb before it explodes.",
+    href: "/bomb",
     ready: true,
   },
 ] as const;
@@ -319,30 +331,16 @@ export default function PartyGamesHomePage() {
                     index *
                     0.08,
                 }}
-                whileHover={
-                  game.ready
-                    ? {
-                        scale:
-                          1.02,
-                      }
-                    : {}
-                }
-                whileTap={
-                  game.ready
-                    ? {
-                        scale:
-                          0.98,
-                      }
-                    : {}
-                }
-                className={`rounded-3xl border p-5 transition ${
-                  game.ready
-                    ? "border-accent/40 bg-accent/10 shadow-xl shadow-accent/10 hover:border-accent"
-                    : "border-white/10 bg-panel2/80 opacity-80"
-                }`}
+                whileHover={{
+                  scale: 1.02,
+                }}
+                whileTap={{
+                  scale: 0.98,
+                }}
+                className="rounded-3xl border border-accent/40 bg-accent/10 p-5 shadow-xl shadow-accent/10 transition hover:border-accent"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 text-4xl">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-4xl">
                     {
                       game.emoji
                     }
@@ -363,28 +361,17 @@ export default function PartyGamesHomePage() {
                     </p>
                   </div>
 
-                  <div
-                    className={`text-xs font-black uppercase ${
-                      game.ready
-                        ? "text-accent"
-                        : "text-white/35"
-                    }`}
-                  >
-                    {game.ready
-                      ? language ===
-                        "hr"
-                        ? "IGRAJ"
-                        : "PLAY"
-                      : language ===
-                        "hr"
-                      ? "USKORO"
-                      : "SOON"}
+                  <div className="text-xs font-black uppercase text-accent">
+                    {language ===
+                    "hr"
+                      ? "IGRAJ"
+                      : "PLAY"}
                   </div>
                 </div>
               </motion.div>
             );
 
-            return game.ready ? (
+            return (
               <Link
                 key={
                   game.name
@@ -395,14 +382,6 @@ export default function PartyGamesHomePage() {
               >
                 {card}
               </Link>
-            ) : (
-              <div
-                key={
-                  game.name
-                }
-              >
-                {card}
-              </div>
             );
           }
         )}

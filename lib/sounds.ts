@@ -10,9 +10,13 @@ export type SoundName =
   | "score"
   | "escaped"
   | "caught"
-  | "combat";
+  | "combat"
+  | "explosion";
 
-const SOUND_FILES: Record<SoundName, string> = {
+const SOUND_FILES: Record<
+  SoundName,
+  string
+> = {
   click: "/sounds/click.mp3",
   join: "/sounds/join.mp3",
   start: "/sounds/start.mp3",
@@ -25,6 +29,7 @@ const SOUND_FILES: Record<SoundName, string> = {
   escaped: "/sounds/escaped.mp3",
   caught: "/sounds/caught.mp3",
   combat: "/sounds/combat.mp3",
+  explosion: "/sounds/explosion.mp3",
 };
 
 const audioCache = new Map<
@@ -35,22 +40,31 @@ const audioCache = new Map<
 function getAudio(
   sound: SoundName
 ): HTMLAudioElement | null {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return null;
   }
 
   const existing =
-    audioCache.get(sound);
+    audioCache.get(
+      sound
+    );
 
   if (existing) {
     return existing;
   }
 
-  const audio = new Audio(
-    SOUND_FILES[sound]
-  );
+  const audio =
+    new Audio(
+      SOUND_FILES[
+        sound
+      ]
+    );
 
-  audio.preload = "auto";
+  audio.preload =
+    "auto";
 
   audioCache.set(
     sound,
@@ -75,10 +89,14 @@ export function playSound(
     audio.pause();
     audio.currentTime = 0;
 
-    audio.volume = Math.max(
-      0,
-      Math.min(1, volume)
-    );
+    audio.volume =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          volume
+        )
+      );
 
     void audio
       .play()
@@ -98,18 +116,24 @@ export function stopSound(
   sound: SoundName
 ) {
   const audio =
-    audioCache.get(sound);
+    audioCache.get(
+      sound
+    );
 
   if (!audio) {
     return;
   }
 
   audio.pause();
-  audio.currentTime = 0;
+  audio.currentTime =
+    0;
 }
 
 export function preloadSounds() {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return;
   }
 
@@ -117,7 +141,11 @@ export function preloadSounds() {
     Object.keys(
       SOUND_FILES
     ) as SoundName[]
-  ).forEach((sound) => {
-    getAudio(sound);
-  });
+  ).forEach(
+    (sound) => {
+      getAudio(
+        sound
+      );
+    }
+  );
 }

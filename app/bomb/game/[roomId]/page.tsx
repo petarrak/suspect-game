@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -136,7 +136,7 @@ export default function BombGamePage() {
             setError(
               e?.message ??
                 (language === "hr"
-                  ? "Nije moguće učitati Bomb."
+                  ? "Nije moguÄ‡e uÄŤitati Bomb."
                   : "Could not load Bomb.")
             );
           }
@@ -540,42 +540,42 @@ export default function BombGamePage() {
           )
         ) {
           message =
-            "❌ Taj odgovor je već iskorišten!";
+            "âťŚ Taj odgovor je veÄ‡ iskoriĹˇten!";
         } else if (
           raw.includes(
             "not accepted"
           )
         ) {
           message =
-            "❌ Taj odgovor ne pripada ovoj kategoriji!";
+            "âťŚ Taj odgovor ne pripada ovoj kategoriji!";
         } else if (
           raw.includes(
             "already exploded"
           )
         ) {
           message =
-            "💥 Prekasno! Bomba je eksplodirala.";
+            "đź’Ą Prekasno! Bomba je eksplodirala.";
         } else if (
           raw.includes(
             "do not have the bomb"
           )
         ) {
           message =
-            "Bomba više nije kod tebe.";
+            "Bomba viĹˇe nije kod tebe.";
         } else if (
           raw.includes(
             "Enter an answer"
           )
         ) {
           message =
-            "Upiši odgovor.";
+            "UpiĹˇi odgovor.";
         }
       }
 
       setError(
         message ||
           (language === "hr"
-            ? "Odgovor nije prihvaćen."
+            ? "Odgovor nije prihvaÄ‡en."
             : "Answer was not accepted.")
       );
     } finally {
@@ -609,7 +609,7 @@ export default function BombGamePage() {
               repeat: Infinity,
             }}
           >
-            💣
+            đź’Ł
           </motion.div>
 
           <p className="mt-5 text-white/50">
@@ -647,7 +647,7 @@ export default function BombGamePage() {
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-white/50">
           {language === "hr"
-            ? "Učitavanje rezultata..."
+            ? "UÄŤitavanje rezultata..."
             : "Loading results..."}
         </p>
       </main>
@@ -747,7 +747,7 @@ export default function BombGamePage() {
               }}
             >
               <div className="text-9xl">
-                💥
+                đź’Ą
               </div>
 
               <h1 className="mt-4 text-6xl font-black">
@@ -769,7 +769,7 @@ export default function BombGamePage() {
 
       <header className="text-center pt-4">
         <p className="text-xs font-black uppercase tracking-[0.3em] text-accent">
-          💣 BOMB
+          đź’Ł BOMB
         </p>
 
         <p className="mt-2 text-sm text-white/35">
@@ -793,7 +793,7 @@ export default function BombGamePage() {
       >
         <div className="text-5xl">
           {state.category?.emoji ??
-            "💣"}
+            "đź’Ł"}
         </div>
 
         <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-white/35">
@@ -840,7 +840,7 @@ export default function BombGamePage() {
                 repeat: Infinity,
               }}
             >
-              💣
+              đź’Ł
             </motion.div>
 
             <h2 className="mt-4 text-3xl font-black text-red-300">
@@ -851,7 +851,7 @@ export default function BombGamePage() {
 
             <p className="mt-2 text-sm text-white/45">
               {language === "hr"
-                ? "Brzo upiši valjan odgovor."
+                ? "Brzo upiĹˇi valjan odgovor."
                 : "Quickly type a valid answer."}
             </p>
           </motion.div>
@@ -879,12 +879,12 @@ export default function BombGamePage() {
                 repeat: Infinity,
               }}
             >
-              💣
+              đź’Ł
             </motion.div>
 
             <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-white/35">
               {language === "hr"
-                ? "BOMBU DRŽI"
+                ? "BOMBU DRĹ˝I"
                 : "BOMB HOLDER"}
             </p>
 
@@ -910,9 +910,9 @@ export default function BombGamePage() {
             repeat: Infinity,
           }}
         >
-          ⏱️{" "}
+          âŹ±ď¸Ź{" "}
           {language === "hr"
-            ? "KADA ĆE EKSPLODIRATI?"
+            ? "KADA Ä†E EKSPLODIRATI?"
             : "WHEN WILL IT EXPLODE?"}
         </motion.p>
       </section>
@@ -940,7 +940,7 @@ export default function BombGamePage() {
               maxLength={40}
               placeholder={
                 language === "hr"
-                  ? "Upiši odgovor..."
+                  ? "UpiĹˇi odgovor..."
                   : "Type an answer..."
               }
               className="input text-center text-xl font-black"
@@ -958,8 +958,8 @@ export default function BombGamePage() {
                   ? "PROVJERA..."
                   : "CHECKING..."
                 : language === "hr"
-                ? "💣 POŠALJI BOMBU"
-                : "💣 PASS THE BOMB"}
+                ? "đź’Ł POĹ ALJI BOMBU"
+                : "đź’Ł PASS THE BOMB"}
             </Button>
           </form>
         )}
@@ -967,7 +967,7 @@ export default function BombGamePage() {
       {!me?.is_alive && (
         <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-center">
           <p className="font-black text-red-300">
-            💀{" "}
+            đź’€{" "}
             {language === "hr"
               ? "ISPAO SI"
               : "YOU'RE OUT"}
@@ -975,7 +975,7 @@ export default function BombGamePage() {
 
           <p className="mt-2 text-sm text-white/40">
             {language === "hr"
-              ? "Možeš gledati ostatak igre."
+              ? "MoĹľeĹˇ gledati ostatak igre."
               : "You can watch the rest of the game."}
           </p>
         </div>
@@ -1002,7 +1002,7 @@ export default function BombGamePage() {
         <div className="flex items-center justify-between">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-white/35">
             {language === "hr"
-              ? "IGRAČI"
+              ? "IGRAÄŚI"
               : "PLAYERS"}
           </p>
 
@@ -1010,7 +1010,7 @@ export default function BombGamePage() {
             {alivePlayers.length}/
             {state.players.length}{" "}
             {language === "hr"
-              ? "živih"
+              ? "Ĺľivih"
               : "alive"}
           </p>
         </div>
@@ -1077,15 +1077,15 @@ export default function BombGamePage() {
                             player.lives,
                         })
                           .map(
-                            () => "❤️"
+                            () => "âť¤ď¸Ź"
                           )
                           .join("")
-                      : "💀"}
+                      : "đź’€"}
                   </span>
 
                   {hasBomb && (
                     <span className="text-xl">
-                      💣
+                      đź’Ł
                     </span>
                   )}
                 </motion.div>
@@ -1098,7 +1098,7 @@ export default function BombGamePage() {
       <section className="pb-5">
         <p className="text-xs font-black uppercase tracking-[0.2em] text-white/30">
           {language === "hr"
-            ? "ISKORIŠTENI ODGOVORI"
+            ? "ISKORIĹ TENI ODGOVORI"
             : "USED ANSWERS"}
         </p>
 
@@ -1106,7 +1106,7 @@ export default function BombGamePage() {
         0 ? (
           <p className="mt-2 text-sm text-white/25">
             {language === "hr"
-              ? "Još nema odgovora."
+              ? "JoĹˇ nema odgovora."
               : "No answers yet."}
           </p>
         ) : (

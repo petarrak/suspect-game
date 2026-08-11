@@ -67,6 +67,15 @@ const games = [
     href: "/bomb",
     ready: true,
   },
+
+  {
+    name: "DRAW & GUESS",
+    emoji: "🎨",
+    hr: "Crtaj riječ dok prijatelji pokušavaju pogoditi.",
+    en: "Draw the word while your friends try to guess it.",
+    href: "/draw-guess",
+    ready: true,
+  },
 ] as const;
 
 export default function PartyGamesHomePage() {

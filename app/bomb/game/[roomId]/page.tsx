@@ -102,6 +102,21 @@ export default function BombGamePage() {
   const resolvingRef =
     useRef(false);
 
+  const previousMyTurnRef =
+    useRef<boolean | null>(
+      null
+    );
+
+  const categoryCardRef =
+    useRef<HTMLElement | null>(
+      null
+    );
+
+  const [
+    showStickyCategory,
+    setShowStickyCategory,
+  ] = useState(false);
+
   const loadState =
     useCallback(
       async (
@@ -235,6 +250,77 @@ export default function BombGamePage() {
   }, [
     roomId,
     loadState,
+  ]);
+
+  /*
+   * Keep the current category visible on mobile.
+   *
+   * When the large category card scrolls out of view,
+   * show a compact fixed category pill near the top.
+   */
+
+  useEffect(() => {
+    const element =
+      categoryCardRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const observer =
+      new IntersectionObserver(
+        ([entry]) => {
+          setShowStickyCategory(
+            !entry.isIntersecting
+          );
+        },
+        {
+          threshold: 0.15,
+        }
+      );
+
+    observer.observe(
+      element
+    );
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    state?.round_number,
+  ]);
+
+  /*
+   * Haptics.
+   *
+   * Give a short vibration when this player
+   * receives the bomb. The first loaded state
+   * does not vibrate, so refreshes do not cause
+   * a false haptic.
+   */
+
+  useEffect(() => {
+    if (!state) {
+      return;
+    }
+
+    const wasMyTurn =
+      previousMyTurnRef.current;
+
+    if (
+      wasMyTurn === false &&
+      state.is_my_turn &&
+      state.status === "playing" &&
+      "vibrate" in navigator
+    ) {
+      navigator.vibrate(90);
+    }
+
+    previousMyTurnRef.current =
+      state.is_my_turn;
+  }, [
+    state?.is_my_turn,
+    state?.status,
   ]);
 
   /*
@@ -417,13 +503,22 @@ export default function BombGamePage() {
                   "vibrate" in
                   navigator
                 ) {
-                  navigator.vibrate([
-                    150,
-                    70,
-                    250,
-                    70,
-                    400,
-                  ]);
+                  if (
+                    result.exploded_player_id ===
+                    state.my_player_id
+                  ) {
+                    navigator.vibrate([
+                      180,
+                      70,
+                      280,
+                      80,
+                      450,
+                    ]);
+                  } else {
+                    navigator.vibrate(
+                      70
+                    );
+                  }
                 }
 
                 window.setTimeout(
@@ -769,6 +864,45 @@ export default function BombGamePage() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showStickyCategory &&
+          !explosionVisible && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: -10,
+                scale: 0.96,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: -8,
+                scale: 0.96,
+              }}
+              transition={{
+                duration: 0.18,
+              }}
+              className="fixed left-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] z-[90] max-w-[12.5rem] rounded-full border border-accent/35 bg-[#17111f]/95 px-3.5 py-2 shadow-xl shadow-black/40 backdrop-blur-xl"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="shrink-0 text-lg">
+                  {state.category?.emoji ??
+                    "💣"}
+                </span>
+
+                <span className="truncate text-xs font-black uppercase tracking-[0.08em] text-white">
+                  {categoryName ??
+                    "..."}
+                </span>
+              </div>
+            </motion.div>
+          )}
+      </AnimatePresence>
+
       <header className="text-center pt-4">
         <p className="text-xs font-black uppercase tracking-[0.3em] text-accent">
           💣 BOMB
@@ -783,6 +917,7 @@ export default function BombGamePage() {
       </header>
 
       <motion.section
+        ref={categoryCardRef}
         className="rounded-3xl border border-accent/25 bg-accent/10 p-6 text-center"
         initial={{
           opacity: 0,

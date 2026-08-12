@@ -4,7 +4,6 @@ import {
   PointerEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -101,9 +100,6 @@ export default function DrawGuessGamePage() {
     );
 
   const canvasCssWidthRef =
-    useRef(0);
-
-  const canvasCssHeightRef =
     useRef(0);
 
   const drawingRef =
@@ -564,9 +560,6 @@ export default function DrawGuessGamePage() {
       canvasCssWidthRef.current =
         rect.width;
 
-      canvasCssHeightRef.current =
-        rect.height;
-
       const ratio =
         window.devicePixelRatio ||
         1;
@@ -645,43 +638,6 @@ export default function DrawGuessGamePage() {
         drawStroke,
       ]
     );
-
-  // Canvas must have its real mobile layout size before the first touch.
-  // ResizeObserver also catches late font/layout changes without waiting
-  // for the user to tap or rotate the device.
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let frame = 0;
-    const syncSize = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-
-        const widthChanged = Math.abs(rect.width - canvasCssWidthRef.current) >= 1;
-        const heightChanged = Math.abs(rect.height - canvasCssHeightRef.current) >= 1;
-
-        if (widthChanged || heightChanged || canvas.width <= 1 || canvas.height <= 1) {
-          if (roundId) {
-            void redrawCanvas(roundId);
-          } else {
-            resetCanvas();
-          }
-        }
-      });
-    };
-
-    const observer = new ResizeObserver(syncSize);
-    observer.observe(canvas);
-    syncSize();
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [roundId, redrawCanvas, resetCanvas]);
 
   useEffect(() => {
     if (!roomId) {

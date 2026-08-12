@@ -4,6 +4,7 @@ import {
   PointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -100,6 +101,9 @@ export default function DrawGuessGamePage() {
     );
 
   const canvasCssWidthRef =
+    useRef(0);
+
+  const canvasCssHeightRef =
     useRef(0);
 
   const drawingRef =
@@ -560,6 +564,9 @@ export default function DrawGuessGamePage() {
       canvasCssWidthRef.current =
         rect.width;
 
+      canvasCssHeightRef.current =
+        rect.height;
+
       const ratio =
         window.devicePixelRatio ||
         1;
@@ -638,6 +645,43 @@ export default function DrawGuessGamePage() {
         drawStroke,
       ]
     );
+
+  // Canvas must have its real mobile layout size before the first touch.
+  // ResizeObserver also catches late font/layout changes without waiting
+  // for the user to tap or rotate the device.
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let frame = 0;
+    const syncSize = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        const widthChanged = Math.abs(rect.width - canvasCssWidthRef.current) >= 1;
+        const heightChanged = Math.abs(rect.height - canvasCssHeightRef.current) >= 1;
+
+        if (widthChanged || heightChanged || canvas.width <= 1 || canvas.height <= 1) {
+          if (roundId) {
+            void redrawCanvas(roundId);
+          } else {
+            resetCanvas();
+          }
+        }
+      });
+    };
+
+    const observer = new ResizeObserver(syncSize);
+    observer.observe(canvas);
+    syncSize();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [roundId, redrawCanvas, resetCanvas]);
 
   useEffect(() => {
     if (!roomId) {
@@ -1128,20 +1172,23 @@ export default function DrawGuessGamePage() {
     const rect =
       canvas.getBoundingClientRect();
 
-    return {
-      x:
-        (
+    const x =
+      (
           event.clientX -
           rect.left
         ) /
-        rect.width,
+        rect.width;
 
-      y:
-        (
+    const y =
+      (
           event.clientY -
           rect.top
         ) /
-        rect.height,
+        rect.height;
+
+    return {
+      x: Math.min(1, Math.max(0, x)),
+      y: Math.min(1, Math.max(0, y)),
     };
   }
 
@@ -1154,6 +1201,20 @@ export default function DrawGuessGamePage() {
       !roundId
     ) {
       return;
+    }
+
+    event.preventDefault();
+
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+
+    // Final synchronous guard for the very first mobile touch.
+    if (
+      Math.abs(canvas.width - Math.floor(rect.width * ratio)) > 1 ||
+      Math.abs(canvas.height - Math.floor(rect.height * ratio)) > 1
+    ) {
+      resetCanvas();
     }
 
     event.currentTarget.setPointerCapture(
@@ -1479,6 +1540,16 @@ export default function DrawGuessGamePage() {
     return null;
   }
 
+  const connectedPlayerCount = Math.max(1, state.players.length);
+  const visibleTotalRounds = Math.max(
+    1,
+    Math.ceil(state.total_rounds / connectedPlayerCount)
+  );
+  const visibleRound = Math.min(
+    visibleTotalRounds,
+    Math.ceil(state.round_number / connectedPlayerCount)
+  );
+
   return (
     <main className="min-h-screen max-w-md mx-auto flex flex-col gap-4 p-4">
       {roundTransition.visible && (
@@ -1609,11 +1680,11 @@ export default function DrawGuessGamePage() {
               ? "RUNDA"
               : "ROUND"}{" "}
             {
-              state.round_number
+              visibleRound
             }
             /
             {
-              state.total_rounds
+              visibleTotalRounds
             }
           </p>
 

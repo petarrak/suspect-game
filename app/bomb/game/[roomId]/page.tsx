@@ -112,6 +112,16 @@ export default function BombGamePage() {
       null
     );
 
+  const answerInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
+
+  const answerFormRef =
+    useRef<HTMLFormElement | null>(
+      null
+    );
+
   const [
     showStickyCategory,
     setShowStickyCategory,
@@ -288,6 +298,83 @@ export default function BombGamePage() {
     };
   }, [
     state?.round_number,
+  ]);
+
+  /*
+   * Mobile keyboard handling.
+   *
+   * Android and iOS shrink the visual viewport after the input is
+   * focused. Keep the compact category visible immediately and move
+   * the answer form into the usable area above the keyboard.
+   */
+  useEffect(() => {
+    if (
+      !state?.is_my_turn ||
+      !state.my_player_id
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    let firstTimer: number | null = null;
+    let secondTimer: number | null = null;
+
+    function positionAnswerForm() {
+      if (cancelled) {
+        return;
+      }
+
+      setShowStickyCategory(true);
+
+      answerFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+
+    firstTimer = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+
+      answerInputRef.current?.focus({
+        preventScroll: true,
+      });
+
+      positionAnswerForm();
+
+      secondTimer = window.setTimeout(
+        positionAnswerForm,
+        350
+      );
+    }, 120);
+
+    const viewport = window.visualViewport;
+    viewport?.addEventListener(
+      "resize",
+      positionAnswerForm
+    );
+
+    return () => {
+      cancelled = true;
+
+      if (firstTimer !== null) {
+        window.clearTimeout(firstTimer);
+      }
+
+      if (secondTimer !== null) {
+        window.clearTimeout(secondTimer);
+      }
+
+      viewport?.removeEventListener(
+        "resize",
+        positionAnswerForm
+      );
+    };
+  }, [
+    state?.is_my_turn,
+    state?.current_holder_player_id,
+    state?.my_player_id,
   ]);
 
   /*
@@ -785,7 +872,7 @@ export default function BombGamePage() {
 
   return (
     <motion.main
-      className="relative min-h-screen max-w-md mx-auto flex flex-col gap-5 overflow-hidden p-6"
+      className="relative min-h-screen max-w-md mx-auto flex flex-col gap-5 overflow-x-hidden p-6"
       animate={
         explosionVisible
           ? {
@@ -1057,12 +1144,27 @@ export default function BombGamePage() {
       {me?.is_alive &&
         state.is_my_turn && (
           <form
+            ref={answerFormRef}
             onSubmit={
               handleSubmit
             }
-            className="flex flex-col gap-3"
+            className="scroll-mt-24 flex flex-col gap-3 pb-[env(safe-area-inset-bottom)]"
           >
+            <div className="sticky top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-40 rounded-2xl border border-accent/35 bg-[#17111f]/95 px-4 py-3 text-center shadow-xl shadow-black/40 backdrop-blur-xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+                {language === "hr"
+                  ? "KATEGORIJA"
+                  : "CATEGORY"}
+              </p>
+
+              <p className="mt-1 truncate text-lg font-black text-white">
+                {state.category?.emoji ?? "💣"}{" "}
+                {categoryName ?? "..."}
+              </p>
+            </div>
+
             <input
+              ref={answerInputRef}
               value={answer}
               onChange={(event) =>
                 setAnswer(
@@ -1072,7 +1174,6 @@ export default function BombGamePage() {
               disabled={
                 submitting
               }
-              autoFocus
               autoComplete="off"
               maxLength={40}
               placeholder={
@@ -1081,6 +1182,16 @@ export default function BombGamePage() {
                   : "Type an answer..."
               }
               className="input text-center text-xl font-black"
+              onFocus={() => {
+                setShowStickyCategory(true);
+
+                window.setTimeout(() => {
+                  answerFormRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  });
+                }, 250);
+              }}
             />
 
             <Button

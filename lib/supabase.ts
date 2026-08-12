@@ -19,48 +19,67 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
   }
 );
 
-export async function ensureAnonSession(): Promise<string> {
+// Svi paralelni pozivi koriste istu prijavu.
+// Bez ove brave više komponenti može istodobno napraviti
+// različite anonimne korisnike i prepisati spremljenu sesiju.
+let anonSessionPromise: Promise<string> | null = null;
+
+async function createOrGetAnonSession(): Promise<string> {
   const {
     data: sessionData,
     error: sessionError,
   } = await supabase.auth.getSession();
 
   if (sessionError) {
-    console.error(
-      "Supabase getSession error:",
-      sessionError
-    );
+    console.error("Supabase getSession error:", sessionError);
   }
 
-  if (sessionData.session?.user?.id) {
-    return sessionData.session.user.id;
+  const existingUserId = sessionData.session?.user?.id;
+
+  if (existingUserId) {
+    return existingUserId;
   }
 
   const { data, error } =
     await supabase.auth.signInAnonymously();
 
   if (error) {
-    console.error(
-      "Supabase anonymous sign-in error:",
-      error
-    );
-
+    console.error("Supabase anonymous sign-in error:", error);
     throw new Error(
       `Anonymous sign-in failed: ${error.message}`
     );
   }
 
-  if (!data.user) {
+  const userId = data.user?.id;
+
+  if (!userId) {
     throw new Error(
       "Anonymous sign-in failed: Supabase returned no user."
     );
   }
 
-  return data.user.id;
+  return userId;
+}
+
+export async function ensureAnonSession(): Promise<string> {
+  if (anonSessionPromise) {
+    return anonSessionPromise;
+  }
+
+  anonSessionPromise = createOrGetAnonSession();
+
+  try {
+    return await anonSessionPromise;
+  } finally {
+    // Nakon završetka budući poziv ponovno provjerava spremljenu sesiju.
+    // Paralelni pozivi tijekom prijave i dalje čekaju isti Promise.
+    anonSessionPromise = null;
+  }
 }
 
 export function generateRoomCode(): string {

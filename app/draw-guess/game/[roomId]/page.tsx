@@ -108,6 +108,12 @@ export default function DrawGuessGamePage() {
   const pointsRef =
     useRef<Point[]>([]);
 
+  const redrawInProgressRef =
+    useRef(false);
+
+  const queuedStrokesRef =
+    useRef<StrokePayload[]>([]);
+
   const finishTriggeredRef =
     useRef(false);
 
@@ -616,20 +622,39 @@ export default function DrawGuessGamePage() {
       async (
         activeRoundId: string
       ) => {
-        resetCanvas();
+        redrawInProgressRef.current =
+          true;
 
-        const strokes =
-          await getDrawGuessStrokes(
-            roomId,
-            activeRoundId
-          );
+        queuedStrokesRef.current =
+          [];
 
-        resetCanvas();
+        try {
+          const strokes =
+            await getDrawGuessStrokes(
+              roomId,
+              activeRoundId
+            );
 
-        for (const stroke of strokes) {
-          drawStroke(
-            stroke.stroke_data as StrokePayload
-          );
+          resetCanvas();
+
+          for (const stroke of strokes) {
+            drawStroke(
+              stroke.stroke_data as StrokePayload
+            );
+          }
+        } finally {
+          redrawInProgressRef.current =
+            false;
+
+          const queued =
+            queuedStrokesRef.current;
+
+          queuedStrokesRef.current =
+            [];
+
+          for (const stroke of queued) {
+            drawStroke(stroke);
+          }
         }
       },
       [
@@ -718,13 +743,12 @@ export default function DrawGuessGamePage() {
           }
         );
 
-        if (
-          activeRoundId
-        ) {
-          await redrawCanvas(
-            activeRoundId
-          );
-        }
+        /*
+         * The strokes channel performs the authoritative redraw as soon
+         * as Realtime is subscribed. This closes the gap in which a
+         * stroke could be inserted after the initial query but before
+         * the subscription became active.
+         */
       } catch (e: any) {
         if (
           !cancelled
@@ -846,9 +870,20 @@ export default function DrawGuessGamePage() {
             const stroke =
               payload.new as DrawGuessStroke;
 
-            drawStroke(
-              stroke.stroke_data as StrokePayload
-            );
+            const strokeData =
+              stroke.stroke_data as StrokePayload;
+
+            if (
+              redrawInProgressRef.current
+            ) {
+              queuedStrokesRef.current.push(
+                strokeData
+              );
+            } else {
+              drawStroke(
+                strokeData
+              );
+            }
           }
         )
         .on(
@@ -869,7 +904,16 @@ export default function DrawGuessGamePage() {
             );
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (
+            status ===
+            "SUBSCRIBED"
+          ) {
+            void redrawCanvas(
+              roundId
+            );
+          }
+        });
 
     const guessesChannel =
       supabase
@@ -1123,24 +1167,48 @@ export default function DrawGuessGamePage() {
       PointerEvent<HTMLCanvasElement>
   ): Point {
     const canvas =
-      canvasRef.current!;
+      event.currentTarget;
 
     const rect =
       canvas.getBoundingClientRect();
 
+    const nativeEvent =
+      event.nativeEvent;
+
+    /*
+     * offsetX/offsetY are measured inside the canvas itself. They stay
+     * correct when mobile browsers move the visual viewport, when the
+     * page has safe-area padding, and when the drawer and viewer use
+     * different screen sizes. clientY - rect.top caused the vertical
+     * displacement seen on other devices.
+     */
+    const offsetX =
+      Number.isFinite(
+        nativeEvent.offsetX
+      )
+        ? nativeEvent.offsetX
+        : event.clientX -
+          rect.left;
+
+    const offsetY =
+      Number.isFinite(
+        nativeEvent.offsetY
+      )
+        ? nativeEvent.offsetY
+        : event.clientY -
+          rect.top;
+
     const x =
-      (
-          event.clientX -
-          rect.left
-        ) /
-        rect.width;
+      rect.width > 0
+        ? offsetX /
+          rect.width
+        : 0;
 
     const y =
-      (
-          event.clientY -
-          rect.top
-        ) /
-        rect.height;
+      rect.height > 0
+        ? offsetY /
+          rect.height
+        : 0;
 
     return {
       x: Math.min(1, Math.max(0, x)),
@@ -1197,6 +1265,8 @@ export default function DrawGuessGamePage() {
     ) {
       return;
     }
+
+    event.preventDefault();
 
     const point =
       getPoint(
@@ -1713,6 +1783,9 @@ export default function DrawGuessGamePage() {
             void endStroke()
           }
           onPointerCancel={() =>
+            void endStroke()
+          }
+          onLostPointerCapture={() =>
             void endStroke()
           }
         />

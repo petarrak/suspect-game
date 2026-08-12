@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase, ensureAnonSession, generateRoomCode } from "./supabase";
 import { Player, Room, Question, RoundQuestion, Vote } from "./types";
+import { getPremiumStatus } from "./premium";
 
 const AVATARS = [
   "🐱",
@@ -239,6 +240,8 @@ export async function startGame(room: Room, players: Player[]) {
           suspect.id,
         ];
 
+  const premiumStatus = await getPremiumStatus();
+
   // Pick one random question using both intensity and the host's pack.
   // RANDOM intentionally skips the pack filter and mixes all packs.
   let countQuery = supabase
@@ -250,6 +253,12 @@ export async function startGame(room: Room, players: Player[]) {
     countQuery = countQuery.eq(
       "question_pack",
       room.question_pack
+    );
+  } else if (!premiumStatus.is_premium) {
+    countQuery = countQuery.not(
+      "question_pack",
+      "in",
+      "(COUPLES,ADULT,DRINKING)"
     );
   }
 
@@ -283,6 +292,12 @@ export async function startGame(room: Room, players: Player[]) {
     questionQuery = questionQuery.eq(
       "question_pack",
       room.question_pack
+    );
+  } else if (!premiumStatus.is_premium) {
+    questionQuery = questionQuery.not(
+      "question_pack",
+      "in",
+      "(COUPLES,ADULT,DRINKING)"
     );
   }
 
@@ -843,4 +858,36 @@ export function useRoomRealtime(code: string) {
   }, [code, refetchPlayers]);
 
   return { room, players, loading, error };
+}
+
+/**
+ * Moves the Suspect game from the private-question countdown to the
+ * answering screen. The PostgreSQL function is idempotent, so every
+ * device may safely call it when its timer reaches zero.
+ */
+export async function advanceQuestionToAnswering(
+  roomId: string
+): Promise<void> {
+  await ensureAnonSession();
+
+  const { error } = await supabase.rpc(
+    "advance_suspect_to_answering",
+    {
+      p_room_id: roomId,
+    }
+  );
+
+  if (error) {
+    const detail = [
+      error.message,
+      error.details,
+      error.hint,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    throw new Error(
+      detail || "Could not continue to answers."
+    );
+  }
 }

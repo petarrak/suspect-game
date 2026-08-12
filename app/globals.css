@@ -2,30 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+:root[data-theme="default"] {
+  --theme-background: #0b0b12;
+  --theme-panel: #14141f;
+  --theme-panel-2: #1c1c2b;
+  --theme-accent: #ff3d68;
+  --theme-glow-a: rgba(124, 77, 255, 0.18);
+  --theme-glow-b: rgba(255, 61, 104, 0.12);
+}
+
+:root[data-theme="neon"] {
+  --theme-background: #050712;
+  --theme-panel: #0a1020;
+  --theme-panel-2: #101a30;
+  --theme-accent: #00f5ff;
+  --theme-glow-a: rgba(177, 0, 255, 0.3);
+  --theme-glow-b: rgba(0, 245, 255, 0.2);
+}
+
+:root[data-theme="midnight-gold"] {
+  --theme-background: #080808;
+  --theme-panel: #17140d;
+  --theme-panel-2: #211b0d;
+  --theme-accent: #f5c451;
+  --theme-glow-a: rgba(245, 196, 81, 0.2);
+  --theme-glow-b: rgba(111, 75, 0, 0.2);
+}
+
+:root[data-theme="candy-party"] {
+  --theme-background: #16081e;
+  --theme-panel: #27102f;
+  --theme-panel-2: #35153e;
+  --theme-accent: #ff4fd8;
+  --theme-glow-a: rgba(99, 232, 255, 0.22);
+  --theme-glow-b: rgba(255, 79, 216, 0.24);
+}
+
 html,
 body {
   min-height: 100%;
-  background: #0b0b12;
-
+  background-color: var(--theme-background);
   background-image:
-    radial-gradient(
-      circle at 50% 0%,
-      rgba(124, 77, 255, 0.18),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 20% 100%,
-      rgba(255, 61, 104, 0.12),
-      transparent 45%
-    );
-
+    radial-gradient(circle at 50% 0%, var(--theme-glow-a), transparent 55%),
+    radial-gradient(circle at 20% 100%, var(--theme-glow-b), transparent 45%);
   background-attachment: fixed;
   overscroll-behavior: none;
+  transition: background-color 220ms ease;
 }
 
 html {
   height: 100%;
-  background-color: #0b0b12;
 }
 
 body {
@@ -33,25 +60,16 @@ body {
   min-height: 100vh;
   min-height: 100svh;
   min-height: 100dvh;
-
   margin: 0;
   overflow-x: hidden;
-
-  /*
-   * PWA / notch / Dynamic Island / gesture bar
-   */
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/*
- * Include safe-area padding inside element dimensions.
- */
 *,
 *::before,
 *::after {
@@ -60,11 +78,9 @@ body {
 
 * {
   -webkit-tap-highlight-color: transparent;
+  scrollbar-width: none;
 }
 
-/*
- * Better mobile touch behaviour.
- */
 button,
 a,
 input,
@@ -84,13 +100,6 @@ button {
   font: inherit;
 }
 
-/*
- * Optional wrapper for screens/components
- * that use app-shell.
- *
- * Body already handles the actual safe-area,
- * so we don't add the inset twice here.
- */
 .app-shell {
   width: 100%;
   min-height: 100vh;
@@ -98,17 +107,9 @@ button {
   min-height: 100dvh;
 }
 
-/*
- * BUTTONS
- */
-
 .btn {
   @apply rounded-2xl font-semibold text-center select-none;
-
-  transition:
-    transform 120ms ease,
-    opacity 120ms ease,
-    filter 120ms ease;
+  transition: transform 120ms ease, opacity 120ms ease, filter 120ms ease;
 }
 
 .btn:active {
@@ -120,89 +121,102 @@ button {
 }
 
 .btn-primary {
-  @apply btn bg-accent text-white py-4 px-6 shadow-lg shadow-accent/30;
+  @apply btn text-white py-4 px-6 shadow-lg;
+  background-color: var(--theme-accent);
 }
 
-.btn-primary:hover {
-  filter: brightness(1.07);
+.btn-primary:hover,
+.btn-secondary:hover {
+  filter: brightness(1.08);
 }
 
 .btn-secondary {
-  @apply btn bg-panel2 text-white py-4 px-6 border border-white/10;
-}
-
-.btn-secondary:hover {
-  filter: brightness(1.08);
+  @apply btn text-white py-4 px-6 border border-white/10;
+  background-color: var(--theme-panel-2);
 }
 
 .btn-ghost {
   @apply btn bg-transparent text-white/70 py-3 px-4;
 }
 
-/*
- * CARDS
- */
-
 .card {
-  @apply bg-panel rounded-3xl border border-white/5 shadow-xl shadow-black/40;
+  @apply rounded-3xl border border-white/5 shadow-xl shadow-black/40;
+  background-color: var(--theme-panel);
 }
 
-/*
- * INPUTS
- */
-
 .input {
-  @apply w-full bg-panel2 border border-white/10 rounded-2xl px-4 py-4 text-lg text-white placeholder-white/30 outline-none;
-
+  @apply w-full border border-white/10 rounded-2xl px-4 py-4 text-lg text-white placeholder-white/30 outline-none;
+  background-color: var(--theme-panel-2);
   font-size: 16px;
 }
 
 .input:focus {
-  @apply border-accent;
+  border-color: var(--theme-accent);
 }
 
-/*
- * Prevent iPhone Safari from zooming
- * when focusing an input.
- */
 input,
 textarea,
 select {
   font-size: 16px;
 }
 
-/*
- * Scrollbars
- */
-
 ::-webkit-scrollbar {
   display: none;
 }
 
-* {
-  scrollbar-width: none;
+/* Override the existing Tailwind theme utilities throughout every game. */
+:root:not([data-theme="default"]) .bg-background {
+  background-color: var(--theme-background) !important;
 }
 
-/*
- * MOBILE
- */
+:root:not([data-theme="default"]) .bg-panel {
+  background-color: var(--theme-panel) !important;
+}
+
+:root:not([data-theme="default"]) .bg-panel2 {
+  background-color: var(--theme-panel-2) !important;
+}
+
+:root:not([data-theme="default"]) .bg-accent {
+  background-color: var(--theme-accent) !important;
+}
+
+:root:not([data-theme="default"]) .text-accent {
+  color: var(--theme-accent) !important;
+}
+
+:root:not([data-theme="default"]) .border-accent {
+  border-color: var(--theme-accent) !important;
+}
+
+:root:not([data-theme="default"]) .shadow-accent\/30,
+:root:not([data-theme="default"]) .shadow-accent\/20,
+:root:not([data-theme="default"]) .shadow-accent\/10 {
+  --tw-shadow-color: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+}
+
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 3px;
+}
 
 @media (max-width: 640px) {
   html,
-  body {
-    width: 100%;
-    max-width: 100%;
-  }
-
+  body,
   .app-shell {
     width: 100%;
     max-width: 100%;
   }
 
-  /*
-   * Prevent long text / buttons from
-   * accidentally overflowing the viewport.
-   */
   button,
   a,
   input,
@@ -211,10 +225,6 @@ select {
     max-width: 100%;
   }
 }
-
-/*
- * Installed PWA
- */
 
 @media (display-mode: standalone) {
   html,
@@ -226,33 +236,6 @@ select {
     overscroll-behavior-y: none;
   }
 }
-
-/*
- * Prevent accidental text selection
- * while playing.
- */
-
-.no-select {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/*
- * Accessibility / keyboard focus.
- */
-
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 2px solid rgba(124, 77, 255, 0.9);
-  outline-offset: 3px;
-}
-
-/*
- * Respect users who prefer less motion.
- */
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -19,6 +19,7 @@ export type QuestionPack =
   | "COUPLES"
   | "ADULT"
   | "DRINKING"
+  | "SAVAGE"
   | "MOVIES"
   | "MUSIC"
   | "SPORTS"

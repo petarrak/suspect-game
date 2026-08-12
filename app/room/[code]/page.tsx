@@ -9,6 +9,7 @@ import RoomCodeDisplay from "@/components/RoomCodeDisplay";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { playSound } from "@/lib/sounds";
+import { usePremiumStatus } from "@/lib/premium";
 import QRCode from "react-qr-code";
 import type { Intensity, QuestionPack } from "@/lib/types";
 import {
@@ -33,6 +34,7 @@ const QUESTION_PACK_OPTIONS: {
   { value: "COUPLES", emoji: "❤️", hr: "Parovi", en: "Couples" },
   { value: "ADULT", emoji: "🔞", hr: "18+", en: "18+" },
   { value: "DRINKING", emoji: "🍻", hr: "Drinking", en: "Drinking" },
+  { value: "SAVAGE", emoji: "😈", hr: "Savage", en: "Savage" },
   { value: "MOVIES", emoji: "🎬", hr: "Filmovi", en: "Movies" },
   { value: "MUSIC", emoji: "🎵", hr: "Glazba", en: "Music" },
   { value: "SPORTS", emoji: "⚽", hr: "Sport", en: "Sports" },
@@ -50,11 +52,20 @@ const INTENSITY_OPTIONS: Intensity[] = [
   "SAVAGE",
 ];
 
+const PREMIUM_QUESTION_PACKS: QuestionPack[] = [
+  "COUPLES",
+  "ADULT",
+  "DRINKING",
+  "SAVAGE",
+];
+
 export default function RoomPage() {
   const params = useParams();
   const router = useRouter();
 
   const { language, t } = useLanguage();
+
+  const premium = usePremiumStatus();
 
   const code = (params.code as string).toUpperCase();
 
@@ -282,6 +293,15 @@ export default function RoomPage() {
       !me?.is_host ||
       settingsLoading
     ) {
+      return;
+    }
+
+    if (
+      PREMIUM_QUESTION_PACKS.includes(questionPack) &&
+      !premium.is_premium
+    ) {
+      playSound("click");
+      router.push("/premium");
       return;
     }
 
@@ -863,6 +883,10 @@ export default function RoomPage() {
                     (room.question_pack ?? "CLASSIC") ===
                     option.value;
 
+                  const locked =
+                    PREMIUM_QUESTION_PACKS.includes(option.value) &&
+                    !premium.is_premium;
+
                   return (
                     <motion.button
                       key={option.value}
@@ -870,7 +894,7 @@ export default function RoomPage() {
                       whileHover={{ scale: 1.03, y: -1 }}
                       whileTap={{ scale: 0.96 }}
                       disabled={
-                        settingsLoading
+                        settingsLoading || premium.loading
                       }
                       onClick={() =>
                         changeQuestionPack(
@@ -880,11 +904,14 @@ export default function RoomPage() {
                       className={`rounded-xl border px-2 py-3 text-xs font-black transition ${
                         active
                           ? "border-accent bg-accent/20 text-white"
+                          : locked
+                          ? "border-yellow-300/25 bg-yellow-300/5 text-white/35"
                           : "border-white/10 bg-black/20 text-white/50"
                       }`}
                     >
-                      <span className="block text-lg mb-1">
-                        {option.emoji}
+                      <span className="relative mx-auto mb-1 block w-fit text-lg">
+                        <span className={locked ? "opacity-40" : ""}>{option.emoji}</span>
+                        {locked && <span className="absolute -right-3 -top-2 text-[10px]">🔒</span>}
                       </span>
 
                       {language === "hr"
@@ -898,8 +925,8 @@ export default function RoomPage() {
 
             <p className="text-[11px] leading-relaxed text-white/30">
               {language === "hr"
-                ? "Nasumično miješa sve pakete. Novi paketi trebaju imati pitanja u bazi prije igranja."
-                : "Random mixes every pack. New packs need questions in the database before playing."}
+                ? "🔒 Paketi Parovi, 18+, Drinking i Savage dio su Party Premiuma."
+                : "🔒 Couples, 18+, Drinking and Savage are included with Party Premium."}
             </p>
           </div>
 

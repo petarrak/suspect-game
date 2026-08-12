@@ -24,6 +24,7 @@ import {
   getMyPlayerInRoom,
   getRoomById,
   getMyRoundQuestion,
+  advanceQuestionToAnswering,
 } from "@/lib/useRoom";
 
 export default function QuestionPage() {
@@ -73,6 +74,9 @@ export default function QuestionPage() {
   ] = useState(20);
 
   const hasNavigated =
+    useRef(false);
+
+  const transitionRunning =
     useRef(false);
 
   const revealSoundPlayed =
@@ -240,22 +244,39 @@ export default function QuestionPage() {
       return;
     }
 
-    if (
-      countdown <= 0
-    ) {
+    if (countdown <= 0) {
       stopSound(
         "tick"
       );
 
       if (
-        !hasNavigated.current
+        !hasNavigated.current &&
+        !transitionRunning.current
       ) {
-        hasNavigated.current =
-          true;
+        transitionRunning.current = true;
 
-        router.push(
-          `/answer/${roomId}`
-        );
+        void (async () => {
+          try {
+            await advanceQuestionToAnswering(
+              roomId
+            );
+
+            hasNavigated.current = true;
+
+            router.replace(
+              `/answer/${roomId}`
+            );
+          } catch (e: any) {
+            transitionRunning.current = false;
+
+            setError(
+              e?.message ??
+                (language === "hr"
+                  ? "Nije moguće nastaviti na odgovore."
+                  : "Could not continue to answers.")
+            );
+          }
+        })();
       }
 
       return;
@@ -327,6 +348,7 @@ export default function QuestionPage() {
     error,
     roomId,
     router,
+    language,
   ]);
 
   if (loading) {

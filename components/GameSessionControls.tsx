@@ -1,25 +1,18 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-import {
-  usePathname,
-  useRouter,
-} from "next/navigation";
-
-import { supabase } from "@/lib/supabase";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
+import { supabase } from "@/lib/supabase";
 
 type GameType =
   | "suspect"
   | "liar"
   | "mafia"
   | "who-would"
-  | "bomb";
+  | "bomb"
+  | "truth-or-dare"
+  | "chaos-cards";
 
 type SessionInfo = {
   game: GameType;
@@ -28,25 +21,12 @@ type SessionInfo = {
   lobbyPrefix: string;
 };
 
-function getSessionInfo(
-  pathname: string
-): SessionInfo | null {
-  const parts = pathname
-    .split("/")
-    .filter(Boolean);
-
-  // =========================
-  // SUSPECT ACTIVE GAME
-  // =========================
+function getSessionInfo(pathname: string): SessionInfo | null {
+  const parts = pathname.split("/").filter(Boolean);
 
   if (
     parts.length === 2 &&
-    [
-      "question",
-      "answer",
-      "voting",
-      "reveal",
-    ].includes(parts[0])
+    ["question", "answer", "voting", "reveal"].includes(parts[0])
   ) {
     return {
       game: "suspect",
@@ -56,20 +36,10 @@ function getSessionInfo(
     };
   }
 
-  // =========================
-  // LIAR ACTIVE GAME
-  // =========================
-
   if (
     parts.length === 3 &&
     parts[0] === "liar" &&
-    [
-      "word",
-      "discussion",
-      "voting",
-      "reveal",
-      "results",
-    ].includes(parts[1])
+    ["word", "discussion", "voting", "reveal", "results"].includes(parts[1])
   ) {
     return {
       game: "liar",
@@ -79,22 +49,10 @@ function getSessionInfo(
     };
   }
 
-  // =========================
-  // MAFIA ACTIVE GAME
-  // =========================
-
   if (
     parts.length === 3 &&
     parts[0] === "mafia" &&
-    [
-      "role",
-      "night",
-      "day",
-      "discussion",
-      "voting",
-      "reveal",
-      "results",
-    ].includes(parts[1])
+    ["role", "night", "day", "discussion", "voting", "reveal", "results"].includes(parts[1])
   ) {
     return {
       game: "mafia",
@@ -104,19 +62,10 @@ function getSessionInfo(
     };
   }
 
-  // =========================
-  // WHO WOULD ACTIVE GAME
-  // =========================
-
   if (
     parts.length === 3 &&
     parts[0] === "who-would" &&
-    [
-      "question",
-      "voting",
-      "reveal",
-      "results",
-    ].includes(parts[1])
+    ["question", "voting", "reveal", "results"].includes(parts[1])
   ) {
     return {
       game: "who-would",
@@ -126,17 +75,10 @@ function getSessionInfo(
     };
   }
 
-  // =========================
-  // BOMB ACTIVE GAME
-  // =========================
-
   if (
     parts.length === 3 &&
     parts[0] === "bomb" &&
-    [
-      "game",
-      "results",
-    ].includes(parts[1])
+    ["game", "results"].includes(parts[1])
   ) {
     return {
       game: "bomb",
@@ -146,136 +88,76 @@ function getSessionInfo(
     };
   }
 
+  if (
+    parts.length === 3 &&
+    parts[0] === "truth-or-dare" &&
+    parts[1] === "game"
+  ) {
+    return {
+      game: "truth-or-dare",
+      roomId: parts[2],
+      roomTable: "truth_dare_rooms",
+      lobbyPrefix: "/truth-or-dare/room",
+    };
+  }
+
+  if (
+    parts.length === 3 &&
+    parts[0] === "chaos-cards" &&
+    parts[1] === "game"
+  ) {
+    return {
+      game: "chaos-cards",
+      roomId: parts[2],
+      roomTable: "chaos_card_rooms",
+      lobbyPrefix: "/chaos-cards/room",
+    };
+  }
+
   return null;
 }
 
-function isLobbyPage(
-  pathname: string
-) {
-  const parts = pathname
-    .split("/")
-    .filter(Boolean);
+function isLobbyPage(pathname: string) {
+  const parts = pathname.split("/").filter(Boolean);
 
-  // SUSPECT
-  // /room/ABC123
+  if (parts.length === 2 && parts[0] === "room") return true;
 
-  if (
-    parts.length === 2 &&
-    parts[0] === "room"
-  ) {
-    return true;
-  }
-
-  // LIAR
-  // /liar/room/ABC123
-
-  if (
+  return (
     parts.length === 3 &&
-    parts[0] === "liar" &&
+    [
+      "liar",
+      "mafia",
+      "who-would",
+      "bomb",
+      "truth-or-dare",
+      "chaos-cards",
+    ].includes(parts[0]) &&
     parts[1] === "room"
-  ) {
-    return true;
-  }
-
-  // MAFIA
-  // /mafia/room/ABC123
-
-  if (
-    parts.length === 3 &&
-    parts[0] === "mafia" &&
-    parts[1] === "room"
-  ) {
-    return true;
-  }
-
-  // WHO WOULD
-  // /who-would/room/ABC123
-
-  if (
-    parts.length === 3 &&
-    parts[0] === "who-would" &&
-    parts[1] === "room"
-  ) {
-    return true;
-  }
-
-  // BOMB
-  // /bomb/room/ABC123
-
-  if (
-    parts.length === 3 &&
-    parts[0] === "bomb" &&
-    parts[1] === "room"
-  ) {
-    return true;
-  }
-
-  return false;
+  );
 }
 
 export default function GameSessionControls() {
-  const pathname =
-    usePathname();
-
-  const router =
-    useRouter();
-
-  const { language } =
-    useLanguage();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { language } = useLanguage();
 
   const session = useMemo(
-    () =>
-      getSessionInfo(
-        pathname ?? ""
-      ),
+    () => getSessionInfo(pathname ?? ""),
     [pathname]
   );
-
   const lobbyPage = useMemo(
-    () =>
-      isLobbyPage(
-        pathname ?? ""
-      ),
+    () => isLobbyPage(pathname ?? ""),
     [pathname]
   );
 
-  const [isHost, setIsHost] =
-    useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [returning, setReturning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [roomCode, setRoomCode] =
-    useState<string | null>(
-      null
-    );
-
-  const [open, setOpen] =
-    useState(false);
-
-  const [returning, setReturning] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
-
-  // =========================
-  // POSITIONING
-  // =========================
-  //
-  // Language switcher is already
-  // in the top-right corner.
-  //
-  // HOST therefore sits below it.
-
-  const hostTop =
-    "calc(env(safe-area-inset-top, 0px) + 4.25rem)";
-
-  const menuTop =
-    "calc(env(safe-area-inset-top, 0px) + 7.75rem)";
-
-  // =========================
-  // ACTIVE GAME SESSION
-  // =========================
+  const hostTop = "calc(env(safe-area-inset-top, 0px) + 4.25rem)";
+  const menuTop = "calc(env(safe-area-inset-top, 0px) + 7.75rem)";
 
   useEffect(() => {
     setIsHost(false);
@@ -284,198 +166,109 @@ export default function GameSessionControls() {
     setError(null);
     setReturning(false);
 
-    if (!session) {
-      return;
-    }
-
-    const activeSession =
-      session;
-
+    if (!session) return;
+    const activeSession = session;
     let cancelled = false;
 
     async function load() {
-      const {
-        data: authData,
-      } =
-        await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id;
+      if (cancelled || !userId) return;
 
-      const userId =
-        authData.user?.id;
-
-      if (
-        cancelled ||
-        !userId
-      ) {
-        return;
-      }
-
-      const {
-        data: room,
-        error: roomError,
-      } = await supabase
-        .from(
-          activeSession.roomTable
-        )
-        .select(
-          "id, code, status, host_user_id"
-        )
-        .eq(
-          "id",
-          activeSession.roomId
-        )
+      const { data: room, error: roomError } = await supabase
+        .from(activeSession.roomTable)
+        .select("id, code, status, host_user_id")
+        .eq("id", activeSession.roomId)
         .maybeSingle();
 
-      if (
-        cancelled ||
-        roomError ||
-        !room
-      ) {
-        return;
-      }
+      if (cancelled || roomError || !room) return;
+      setRoomCode(room.code as string);
+      setIsHost(room.host_user_id === userId);
 
-      setRoomCode(
-        room.code as string
-      );
-
-      setIsHost(
-        room.host_user_id ===
-          userId
-      );
-
-      // Ako je igra vraćena u lobby,
-      // prebaci i ovaj uređaj.
-
-      if (
-        room.status ===
-        "waiting"
-      ) {
-        setReturning(false);
-
-        router.replace(
-          `${activeSession.lobbyPrefix}/${room.code}`
-        );
+      if (room.status === "waiting") {
+        router.replace(`${activeSession.lobbyPrefix}/${room.code}`);
       }
     }
 
     void load();
 
-    const channel =
-      supabase
-        .channel(
-          `global-session-${activeSession.game}-${activeSession.roomId}`
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table:
-              activeSession.roomTable,
-            filter:
-              `id=eq.${activeSession.roomId}`,
-          },
-          (payload) => {
-            const updated =
-              payload.new as {
-                code?: string;
-                status?: string;
-                host_user_id?: string;
-              };
-
-            if (
-              updated.code
-            ) {
-              setRoomCode(
-                updated.code
-              );
-            }
-
-            if (
-              updated.status ===
-                "waiting" &&
-              updated.code
-            ) {
-              setReturning(false);
-
-              router.replace(
-                `${activeSession.lobbyPrefix}/${updated.code}`
-              );
-            }
+    const channel = supabase
+      .channel(`global-session-${activeSession.game}-${activeSession.roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: activeSession.roomTable,
+          filter: `id=eq.${activeSession.roomId}`,
+        },
+        (payload) => {
+          const updated = payload.new as { code?: string; status?: string };
+          if (updated.code) setRoomCode(updated.code);
+          if (updated.status === "waiting" && updated.code) {
+            setReturning(false);
+            router.replace(`${activeSession.lobbyPrefix}/${updated.code}`);
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
+
+    const interval = window.setInterval(load, 2000);
 
     return () => {
       cancelled = true;
-
-      void supabase.removeChannel(
-        channel
-      );
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
-  }, [
-    session,
-    router,
-  ]);
-
-  // =========================
-  // HOST RETURN TO LOBBY
-  // =========================
+  }, [session, router]);
 
   async function handleReturnToLobby() {
-    if (
-      !session ||
-      !isHost ||
-      returning
-    ) {
-      return;
-    }
+    if (!session || !isHost || returning) return;
 
-    const activeSession =
-      session;
-
-    const confirmed =
-      window.confirm(
-        language === "hr"
-          ? "Vratiti SVE igrače u lobby? Trenutna partija će se resetirati."
-          : "Return ALL players to the lobby? The current game will be reset."
-      );
-
-    if (!confirmed) {
-      return;
-    }
+    const confirmed = window.confirm(
+      language === "hr"
+        ? "Vratiti SVE igrače u lobby? Trenutna partija će se resetirati."
+        : "Return ALL players to the lobby? The current game will be reset."
+    );
+    if (!confirmed) return;
 
     setReturning(true);
     setError(null);
 
     try {
-      const {
-        data,
-        error: rpcError,
-      } = await supabase.rpc(
-        "party_host_return_to_lobby",
-        {
-          p_game:
-            activeSession.game,
+      let data: unknown = null;
+      let rpcError: { message?: string } | null = null;
 
-          p_room_id:
-            activeSession.roomId,
-        }
-      );
-
-      if (rpcError) {
-        throw rpcError;
+      if (session.game === "truth-or-dare") {
+        const result = await supabase.rpc("restart_truth_dare_game", {
+          p_room_id: session.roomId,
+        });
+        data = result.data;
+        rpcError = result.error;
+      } else if (session.game === "chaos-cards") {
+        const result = await supabase.rpc("restart_chaos_cards_game", {
+          p_room_id: session.roomId,
+        });
+        data = result.data;
+        rpcError = result.error;
+      } else {
+        const result = await supabase.rpc("party_host_return_to_lobby", {
+          p_game: session.game,
+          p_room_id: session.roomId,
+        });
+        data = result.data;
+        rpcError = result.error;
       }
 
-      const code =
-        (data as string | null) ??
-        roomCode;
+      if (rpcError) throw rpcError;
 
-      setReturning(false);
+      const resultCode =
+        typeof data === "string"
+          ? data
+          : (data as { code?: string } | null)?.code ?? roomCode;
 
-      if (code) {
-        router.replace(
-          `${activeSession.lobbyPrefix}/${code}`
-        );
+      if (resultCode) {
+        router.replace(`${session.lobbyPrefix}/${resultCode}`);
       }
     } catch (e: any) {
       setError(
@@ -484,139 +277,98 @@ export default function GameSessionControls() {
             ? "Nije moguće vratiti igru u lobby."
             : "Could not return the game to the lobby.")
       );
-
+    } finally {
       setReturning(false);
     }
   }
 
+  function goHome() {
+    if (
+      session &&
+      !window.confirm(
+        language === "hr"
+          ? "Napustiti trenutnu igru i vratiti se na početnu?"
+          : "Leave the current game and return home?"
+      )
+    ) {
+      return;
+    }
+    router.push("/");
+  }
+
   return (
     <>
-      {/* =====================
-          HOME BUTTON
-          samo u lobbyju
-      ====================== */}
-
-      {lobbyPage && (
+      {(lobbyPage || session) && (
         <button
           type="button"
-          onClick={() =>
-            router.push("/")
-          }
+          onClick={goHome}
           className="fixed left-4 top-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
         >
-          🏠{" "}
-          {language === "hr"
-            ? "POČETNA"
-            : "HOME"}
+          🏠 {language === "hr" ? "POČETNA" : "HOME"}
         </button>
       )}
 
-      {/* =====================
-          HOST BUTTON
-          ispod EN / HR
-      ====================== */}
+      {session && isHost && (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          style={{ top: hostTop }}
+          className="fixed right-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
+        >
+          👑 HOST
+        </button>
+      )}
 
-      {session &&
-        isHost && (
-          <button
-            type="button"
-            onClick={() =>
-              setOpen(
-                (value) =>
-                  !value
-              )
-            }
-            style={{
-              top: hostTop,
-            }}
-            className="fixed right-4 z-[100] flex h-11 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 text-xs font-black text-white shadow-xl backdrop-blur-md transition hover:border-accent/40 hover:bg-white/10"
-          >
-            👑 HOST
-          </button>
-        )}
-
-      {/* =====================
-          HOST MENU
-      ====================== */}
-
-      {session &&
-        isHost &&
-        open && (
-          <div
-            style={{
-              top: menuTop,
-            }}
-            className="fixed right-4 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
-                  👑{" "}
-                  {language ===
-                  "hr"
-                    ? "HOST MENI"
-                    : "HOST MENU"}
-                </p>
-
-                <p className="mt-1 text-xs text-white/40">
-                  {language ===
-                  "hr"
-                    ? "Kontrole za slučaj AFK igrača ili zaglavljene runde."
-                    : "Controls for AFK players or a stuck round."}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setOpen(
-                    false
-                  )
-                }
-                className="text-xl text-white/40 transition hover:text-white"
-              >
-                ×
-              </button>
+      {session && isHost && open && (
+        <div
+          style={{ top: menuTop }}
+          className="fixed right-4 z-[100] w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-white/10 bg-[#15121f]/95 p-4 shadow-2xl backdrop-blur-xl"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-accent">
+                👑 {language === "hr" ? "HOST MENI" : "HOST MENU"}
+              </p>
+              <p className="mt-1 text-xs text-white/40">
+                {language === "hr"
+                  ? "Kontrole za zaglavljenu partiju ili povratak u sobu."
+                  : "Controls for a stuck game or returning to the room."}
+              </p>
             </div>
-
             <button
               type="button"
-              onClick={
-                handleReturnToLobby
-              }
-              disabled={
-                returning
-              }
-              className="mt-4 w-full rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-4 text-left transition hover:bg-red-400/15 disabled:opacity-50"
+              onClick={() => setOpen(false)}
+              className="text-xl text-white/40 transition hover:text-white"
             >
-              <p className="font-black text-red-300">
-                ↩{" "}
-                {returning
-                  ? language ===
-                    "hr"
-                    ? "VRAĆAM U LOBBY..."
-                    : "RETURNING..."
-                  : language ===
-                    "hr"
-                  ? "VRATI SVE U LOBBY"
-                  : "RETURN ALL TO LOBBY"}
-              </p>
-
-              <p className="mt-1 text-xs text-white/40">
-                {language ===
-                "hr"
-                  ? "Resetira trenutnu partiju, ali svi igrači ostaju u istoj sobi."
-                  : "Resets the current game while keeping everyone in the same room."}
-              </p>
+              ×
             </button>
-
-            {error && (
-              <p className="mt-3 text-sm text-red-300">
-                {error}
-              </p>
-            )}
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={() => void handleReturnToLobby()}
+            disabled={returning}
+            className="mt-4 w-full rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-4 text-left transition hover:bg-red-400/15 disabled:opacity-50"
+          >
+            <p className="font-black text-red-300">
+              ↩ {returning
+                ? language === "hr"
+                  ? "VRAĆAM U LOBBY..."
+                  : "RETURNING..."
+                : language === "hr"
+                ? "VRATI SVE U LOBBY"
+                : "RETURN ALL TO LOBBY"}
+            </p>
+            <p className="mt-1 text-xs text-white/40">
+              {language === "hr"
+                ? "Resetira partiju, ali svi igrači ostaju u istoj sobi."
+                : "Resets the game while keeping everyone in the same room."}
+            </p>
+          </button>
+
+          {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+        </div>
+      )}
     </>
   );
 }

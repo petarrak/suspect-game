@@ -147,6 +147,21 @@ export default function MafiaNightPage() {
         setState(fresh);
 
         if (
+          fresh.my_role === "DETECTIVE" &&
+          fresh.selected_target_player_id &&
+          fresh.investigation_is_mafia !== null
+        ) {
+          setActionResult({
+            action_type: "INVESTIGATE",
+            target_player_id:
+              fresh.selected_target_player_id,
+            investigation_is_mafia:
+              fresh.investigation_is_mafia,
+            night_resolved: false,
+          });
+        }
+
+        if (
           fresh.status === "day"
         ) {
           goToDay();
@@ -278,7 +293,12 @@ export default function MafiaNightPage() {
     if (
       !roomId ||
       submitting ||
-      !state
+      !state ||
+      (state.my_role === "DETECTIVE" &&
+        Boolean(
+          state.selected_target_player_id ||
+          actionResult?.action_type === "INVESTIGATE"
+        ))
     ) {
       return;
     }
@@ -637,8 +657,12 @@ export default function MafiaNightPage() {
                     }
                     type="button"
                     disabled={
-                      submitting !==
-                      null
+                      submitting !== null ||
+                      (state.my_role === "DETECTIVE" &&
+                        Boolean(
+                          state.selected_target_player_id ||
+                          actionResult?.action_type === "INVESTIGATE"
+                        ))
                     }
                     onClick={() =>
                       handleAction(
@@ -693,6 +717,17 @@ export default function MafiaNightPage() {
               }
             )}
           </section>
+
+          {state.my_role === "DETECTIVE" &&
+            (state.selected_target_player_id ||
+              actionResult?.action_type === "INVESTIGATE") && (
+              <p className="text-center text-sm font-black text-accent">
+                🔒{" "}
+                {language === "hr"
+                  ? "Već si provjerio jednog igrača ove noći."
+                  : "You already investigated one player tonight."}
+              </p>
+            )}
 
           {state.my_role ===
             "DETECTIVE" &&

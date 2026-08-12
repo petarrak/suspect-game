@@ -99,6 +99,9 @@ export default function DrawGuessGamePage() {
       null
     );
 
+  const canvasCssWidthRef =
+    useRef(0);
+
   const drawingRef =
     useRef(false);
 
@@ -463,6 +466,9 @@ export default function DrawGuessGamePage() {
           return;
         }
 
+        const rect =
+          canvas.getBoundingClientRect();
+
         if (
           payload.type ===
           "clear"
@@ -516,9 +522,9 @@ export default function DrawGuessGamePage() {
 
         ctx.moveTo(
           points[0].x *
-            canvas.width,
+            rect.width,
           points[0].y *
-            canvas.height
+            rect.height
         );
 
         for (
@@ -528,9 +534,9 @@ export default function DrawGuessGamePage() {
         ) {
           ctx.lineTo(
             points[i].x *
-              canvas.width,
+              rect.width,
             points[i].y *
-              canvas.height
+              rect.height
           );
         }
 
@@ -550,6 +556,9 @@ export default function DrawGuessGamePage() {
 
       const rect =
         canvas.getBoundingClientRect();
+
+      canvasCssWidthRef.current =
+        rect.width;
 
       const ratio =
         window.devicePixelRatio ||
@@ -752,6 +761,31 @@ export default function DrawGuessGamePage() {
 
   useEffect(() => {
     function handleResize() {
+      const canvas =
+        canvasRef.current;
+
+      if (!canvas) {
+        return;
+      }
+
+      const nextWidth =
+        canvas.getBoundingClientRect().width;
+
+      /*
+       * Opening/closing a mobile keyboard changes only viewport height.
+       * Do not reset the canvas for that change because it briefly erases
+       * the drawing. Redraw only when the actual canvas width changes,
+       * such as device rotation or a real layout-width change.
+       */
+      if (
+        Math.abs(
+          nextWidth -
+            canvasCssWidthRef.current
+        ) < 1
+      ) {
+        return;
+      }
+
       if (roundId) {
         void redrawCanvas(
           roundId

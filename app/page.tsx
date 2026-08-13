@@ -461,8 +461,52 @@ export default function PartyGamesHomePage() {
             : "All games are ready to play."}
         </p>
 
+        <nav
+          aria-label={
+            language === "hr"
+              ? "Pravne informacije i podrška"
+              : "Legal information and support"
+          }
+          className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-white/45"
+        >
+          <Link
+            href="/privacy"
+            className="underline decoration-white/20 underline-offset-4 transition hover:text-white"
+          >
+            {language === "hr"
+              ? "Privatnost"
+              : "Privacy"}
+          </Link>
+
+          <span aria-hidden="true" className="text-white/20">
+            •
+          </span>
+
+          <Link
+            href="/terms"
+            className="underline decoration-white/20 underline-offset-4 transition hover:text-white"
+          >
+            {language === "hr"
+              ? "Uvjeti korištenja"
+              : "Terms of Use"}
+          </Link>
+
+          <span aria-hidden="true" className="text-white/20">
+            •
+          </span>
+
+          <Link
+            href="/support"
+            className="underline decoration-white/20 underline-offset-4 transition hover:text-white"
+          >
+            {language === "hr"
+              ? "Podrška"
+              : "Support"}
+          </Link>
+        </nav>
+
         <motion.div
-          className="mt-5 flex items-center justify-end"
+          className="mt-5 flex items-center justify-center"
           initial={{
             opacity: 0,
             y: 8,

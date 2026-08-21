@@ -1,4 +1,4 @@
-package com.partygames.app;
+package com.crabpartystudio.partygames;
 
 import com.getcapacitor.BridgeActivity;
 
